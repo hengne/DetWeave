@@ -62,6 +62,43 @@ jobs:
           name: DetWeave-Ubuntu-24.04-amd64
           path: packaging/dist/*.deb
           if-no-files-found: error
+      - name: Smoke test the installed Linux application
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth ./dist/*.deb
+          native_log=$(mktemp)
+          timeout 45s xvfb-run -a /usr/bin/detweave_native >"$native_log" 2>&1 &
+          native_pid=$!
+          trap 'kill "$native_pid" 2>/dev/null || true; wait "$native_pid" 2>/dev/null || true; cat "$native_log"; rm -f "$native_log"' EXIT
+          python - <<'PY'
+          import json
+          import subprocess
+          import time
+          import urllib.request
+
+          opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+          for _ in range(30):
+              sockets = subprocess.check_output(["ss", "-Hltpn"], text=True)
+              endpoints = [
+                  line.split()[3] for line in sockets.splitlines()
+                  if '"detweave_native"' in line and line.split()[3].startswith("127.0.0.1:")
+              ]
+              if endpoints:
+                  break
+              time.sleep(1)
+          else:
+              raise SystemExit("The installed DetWeave executable did not start its local service.")
+          url = "http://" + endpoints[0]
+          with opener.open(url + "/api/examples", timeout=5) as response:
+              fixture = json.load(response)[0]
+          request = urllib.request.Request(url + "/api/validate",
+              data=json.dumps({"model": fixture["model"]}).encode(),
+              headers={"Content-Type": "application/json", "X-DetWeave": "1"})
+          with opener.open(request, timeout=5) as response:
+              report = json.load(response)
+          assert report["ready"] and report["instances"]
+          print("Installed native application loaded the packaged geometry core and validated its fixture.")
+          PY
   windows:
     runs-on: windows-latest
     steps:

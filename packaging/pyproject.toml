@@ -25,6 +25,10 @@ license-files = ["license-windows.rtf"]
 
 [tool.briefcase.app.detweave_native.linux]
 requires = ["toga-gtk==0.5.7"]
+long_description = """DetWeave is a local workbench for detector geometry design.
+Turn discussion text into a traceable geometry model, inspect the 3D preview, and
+export validated models for Geant4 and DD4hep. Save named projects and their
+prompt, run, and export history in a directory of your choice."""
 
 [tool.briefcase.app.detweave_native.linux.system.ubuntu.noble]
 system_requires = ["libcairo2-dev", "libgirepository-2.0-dev"]
