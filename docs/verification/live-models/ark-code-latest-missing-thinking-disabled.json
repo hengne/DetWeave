@@ -1,0 +1,192 @@
+{
+  "model": {
+    "schema_version": "0.1",
+    "title": "多层钨板与硅片几何讨论（参数未定）",
+    "source_text": "讨论记录：想做十几层钨板和硅片，厚度先按5，横向大概100见方。先不定单位、层数、各层间隙、世界尺寸和摆放位置。请把未决定的事项列出来，不能擅自认定。",
+    "world": {
+      "size_mm": [
+        1000.0,
+        1000.0,
+        1000.0
+      ],
+      "material": "G4_AIR"
+    },
+    "volumes": [],
+    "placements": [],
+    "evidence": {
+      "world.size_mm": {
+        "status": "assumed",
+        "quote": "先不定单位、层数、各层间隙、世界尺寸和摆放位置。",
+        "note": "世界尺寸尚未决定；此处仅为满足输出结构而采用占位值1000×1000×1000 mm，不代表已确定的几何参数。"
+      },
+      "world.material": {
+        "status": "assumed",
+        "quote": "想做十几层钨板和硅片",
+        "note": "原文没有指定世界材料；暂以G4_AIR作为占位假设，需人工确认。"
+      }
+    },
+    "questions": [
+      {
+        "id": "q_units",
+        "question": "厚度“5”和横向“100见方”的单位是什么？是否均为mm？",
+        "targets": [
+          "volumes.tungsten_plate.shape",
+          "volumes.silicon_plate.shape"
+        ]
+      },
+      {
+        "id": "q_dimensions",
+        "question": "“厚度先按5”和“横向大概100见方”是否同时适用于钨板和硅片？最终尺寸是否确定为厚度5、横向100×100（单位待确认）？",
+        "targets": [
+          "volumes.tungsten_plate.shape",
+          "volumes.silicon_plate.shape"
+        ]
+      },
+      {
+        "id": "q_layer_count",
+        "question": "“十几层”具体是多少层？这是钨板与硅片合计层数，还是每种材料各自的层数？",
+        "targets": [
+          "placements.tungsten_plate.repeat",
+          "placements.silicon_plate.repeat"
+        ]
+      },
+      {
+        "id": "q_layer_sequence",
+        "question": "各层的材料顺序如何安排，例如钨/硅交替，还是分别成组？起始层和结束层分别是什么材料？",
+        "targets": [
+          "placements.tungsten_plate",
+          "placements.silicon_plate"
+        ]
+      },
+      {
+        "id": "q_gaps",
+        "question": "各层间隙分别是多少？间隙是否全部相同，且是指相邻板表面之间的净距离？",
+        "targets": [
+          "placements.tungsten_plate.repeat",
+          "placements.silicon_plate.repeat"
+        ]
+      },
+      {
+        "id": "q_world",
+        "question": "世界的完整尺寸和材料是什么？当前1000×1000×1000 mm、G4_AIR仅为占位假设。",
+        "targets": [
+          "world.size_mm",
+          "world.material"
+        ]
+      },
+      {
+        "id": "q_positions",
+        "question": "各层及整个层叠结构相对世界的摆放位置是什么？是否沿z轴排列，横向中心如何定位？",
+        "targets": [
+          "placements.tungsten_plate.position_mm",
+          "placements.silicon_plate.position_mm"
+        ]
+      }
+    ],
+    "notes": [
+      "原文仅提出钨板和硅片的初步构想，未提供足以建立完整体积和摆放的参数，因此未创建体积或摆放。",
+      "钨板和硅片可分别对应G4_W与G4_Si，但由于尺寸单位、准确层数及结构顺序未定，暂未据此生成几何。",
+      "未擅自认定单位、层数、间隙、世界尺寸、世界材料或摆放位置。"
+    ]
+  },
+  "report": {
+    "ready": false,
+    "stage": "draft",
+    "issues": [
+      {
+        "level": "blocker",
+        "code": "empty",
+        "path": "placements",
+        "message": "No detector placements have been specified."
+      },
+      {
+        "level": "blocker",
+        "code": "unconfirmed",
+        "path": "world.size_mm",
+        "message": "世界尺寸尚未决定；此处仅为满足输出结构而采用占位值1000×1000×1000 mm，不代表已确定的几何参数。"
+      },
+      {
+        "level": "blocker",
+        "code": "unconfirmed",
+        "path": "world.material",
+        "message": "原文没有指定世界材料；暂以G4_AIR作为占位假设，需人工确认。"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "q_units",
+        "message": "厚度“5”和横向“100见方”的单位是什么？是否均为mm？"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "q_dimensions",
+        "message": "“厚度先按5”和“横向大概100见方”是否同时适用于钨板和硅片？最终尺寸是否确定为厚度5、横向100×100（单位待确认）？"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "q_layer_count",
+        "message": "“十几层”具体是多少层？这是钨板与硅片合计层数，还是每种材料各自的层数？"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "q_layer_sequence",
+        "message": "各层的材料顺序如何安排，例如钨/硅交替，还是分别成组？起始层和结束层分别是什么材料？"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "q_gaps",
+        "message": "各层间隙分别是多少？间隙是否全部相同，且是指相邻板表面之间的净距离？"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "q_world",
+        "message": "世界的完整尺寸和材料是什么？当前1000×1000×1000 mm、G4_AIR仅为占位假设。"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "q_positions",
+        "message": "各层及整个层叠结构相对世界的摆放位置是什么？是否沿z轴排列，横向中心如何定位？"
+      }
+    ],
+    "instances": [],
+    "model_sha256": "4d3236edaa3aba9e813478a08452a6c17f12b2250c0a80a2ea05a31b9f9bb35d",
+    "counts": {
+      "definitions": 0,
+      "instances": 0
+    },
+    "checks": {
+      "schema": "passed",
+      "analytic_geometry": "passed",
+      "evidence": "needs_review",
+      "geant4": "not_run",
+      "dd4hep": "not_run"
+    },
+    "scope": "Axis-aligned boxes and full z-axis tubes; translations only; analytic comparison tolerance 1e-7 mm. Quote presence is checked, not semantic truth. Backend validation must be run separately."
+  },
+  "provenance": {
+    "provider": "openai",
+    "model": "ark-code-latest",
+    "response_model": "auto",
+    "thinking": "disabled",
+    "prompt_version": "0.1",
+    "source_sha256": "a2c9d7f2193a9aa6aa146f9ce7184f9f37b36398ca0c936c513db49e3dfefce4",
+    "duration_s": 21.2,
+    "usage": {
+      "completion_tokens": 886,
+      "prompt_tokens": 1723,
+      "total_tokens": 2609,
+      "prompt_tokens_details": {
+        "cached_tokens": 1536
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    }
+  }
+}

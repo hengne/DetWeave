@@ -1,0 +1,403 @@
+{
+  "model": {
+    "schema_version": "0.1",
+    "title": "四个钨硅周期的合成测试装置",
+    "source_text": "这是合成测试装置。我们先做四个钨硅周期，世界是200毫米见方的空气盒，材料G4_AIR，以全局原点为中心。钨片用G4_W，完整尺寸80×60×1毫米；硅片用G4_Si，完整尺寸80×60×2毫米。所有片直接放在world里，x和y坐标都为0。第一片钨的中心z=-5.5毫米，第一片硅z=-4毫米；两种片分别重复4次，步长都是(0,0,3)毫米。没有旋转，不需要敏感体或光学配置。",
+    "world": {
+      "size_mm": [
+        200,
+        200,
+        200
+      ],
+      "material": "G4_AIR"
+    },
+    "volumes": [
+      {
+        "id": "tungsten_sheet",
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W"
+      },
+      {
+        "id": "silicon_sheet",
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si"
+      }
+    ],
+    "placements": [
+      {
+        "id": "tungsten_first",
+        "volume": "tungsten_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -5.5
+        ],
+        "repeat": {
+          "count": 4,
+          "step_mm": [
+            0,
+            0,
+            3
+          ]
+        }
+      },
+      {
+        "id": "silicon_first",
+        "volume": "silicon_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -4
+        ],
+        "repeat": {
+          "count": 4,
+          "step_mm": [
+            0,
+            0,
+            3
+          ]
+        }
+      }
+    ],
+    "evidence": {
+      "world.size_mm": {
+        "status": "stated",
+        "quote": "世界是200毫米见方的空气盒",
+        "note": "世界的完整尺寸为200×200×200毫米；世界中心位于全局原点。"
+      },
+      "world.material": {
+        "status": "stated",
+        "quote": "材料G4_AIR",
+        "note": "世界材料明确指定为G4_AIR。"
+      },
+      "volumes.tungsten_sheet.shape": {
+        "status": "stated",
+        "quote": "钨片用G4_W，完整尺寸80×60×1毫米",
+        "note": "钨片为完整尺寸80×60×1毫米的盒状体。"
+      },
+      "volumes.tungsten_sheet.material": {
+        "status": "stated",
+        "quote": "钨片用G4_W",
+        "note": "钨片材料明确指定为G4_W。"
+      },
+      "volumes.silicon_sheet.shape": {
+        "status": "stated",
+        "quote": "硅片用G4_Si，完整尺寸80×60×2毫米",
+        "note": "硅片为完整尺寸80×60×2毫米的盒状体。"
+      },
+      "volumes.silicon_sheet.material": {
+        "status": "stated",
+        "quote": "硅片用G4_Si",
+        "note": "硅片材料明确指定为G4_Si。"
+      },
+      "placements.tungsten_first.volume": {
+        "status": "stated",
+        "quote": "钨片用G4_W，完整尺寸80×60×1毫米",
+        "note": "该重复放置使用钨片体积定义。"
+      },
+      "placements.tungsten_first.parent": {
+        "status": "stated",
+        "quote": "所有片直接放在world里",
+        "note": "钨片直接放置于world。"
+      },
+      "placements.tungsten_first.position_mm": {
+        "status": "stated",
+        "quote": "x和y坐标都为0。第一片钨的中心z=-5.5毫米",
+        "note": "第一片钨的中心位置为(0,0,-5.5)毫米。"
+      },
+      "placements.tungsten_first.repeat": {
+        "status": "stated",
+        "quote": "两种片分别重复4次，步长都是(0,0,3)毫米。",
+        "note": "钨片重复4次，平移步长为(0,0,3)毫米。"
+      },
+      "placements.silicon_first.volume": {
+        "status": "stated",
+        "quote": "硅片用G4_Si，完整尺寸80×60×2毫米",
+        "note": "该重复放置使用硅片体积定义。"
+      },
+      "placements.silicon_first.parent": {
+        "status": "stated",
+        "quote": "所有片直接放在world里",
+        "note": "硅片直接放置于world。"
+      },
+      "placements.silicon_first.position_mm": {
+        "status": "stated",
+        "quote": "x和y坐标都为0。第一片钨的中心z=-5.5毫米，第一片硅z=-4毫米",
+        "note": "第一片硅的中心位置为(0,0,-4)毫米。"
+      },
+      "placements.silicon_first.repeat": {
+        "status": "stated",
+        "quote": "两种片分别重复4次，步长都是(0,0,3)毫米。",
+        "note": "硅片重复4次，平移步长为(0,0,3)毫米。"
+      }
+    },
+    "questions": [],
+    "notes": [
+      "钨片和硅片各放置4片，分别共享对应的体积定义。",
+      "未添加旋转、敏感探测器或光学配置，与源文本一致。"
+    ]
+  },
+  "report": {
+    "ready": true,
+    "stage": "exportable",
+    "issues": [],
+    "instances": [
+      {
+        "id": "tungsten_first__0",
+        "origin": "tungsten_first",
+        "volume": "tungsten_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -5.5
+        ],
+        "global_mm": [
+          0,
+          0,
+          -5.5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W",
+        "copy_no": 1
+      },
+      {
+        "id": "tungsten_first__1",
+        "origin": "tungsten_first",
+        "volume": "tungsten_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -2.5
+        ],
+        "global_mm": [
+          0,
+          0,
+          -2.5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W",
+        "copy_no": 2
+      },
+      {
+        "id": "tungsten_first__2",
+        "origin": "tungsten_first",
+        "volume": "tungsten_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          0.5
+        ],
+        "global_mm": [
+          0,
+          0,
+          0.5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W",
+        "copy_no": 3
+      },
+      {
+        "id": "tungsten_first__3",
+        "origin": "tungsten_first",
+        "volume": "tungsten_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          3.5
+        ],
+        "global_mm": [
+          0,
+          0,
+          3.5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W",
+        "copy_no": 4
+      },
+      {
+        "id": "silicon_first__0",
+        "origin": "silicon_first",
+        "volume": "silicon_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -4
+        ],
+        "global_mm": [
+          0,
+          0,
+          -4
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si",
+        "copy_no": 5
+      },
+      {
+        "id": "silicon_first__1",
+        "origin": "silicon_first",
+        "volume": "silicon_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -1
+        ],
+        "global_mm": [
+          0,
+          0,
+          -1
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si",
+        "copy_no": 6
+      },
+      {
+        "id": "silicon_first__2",
+        "origin": "silicon_first",
+        "volume": "silicon_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          2
+        ],
+        "global_mm": [
+          0,
+          0,
+          2
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si",
+        "copy_no": 7
+      },
+      {
+        "id": "silicon_first__3",
+        "origin": "silicon_first",
+        "volume": "silicon_sheet",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          5
+        ],
+        "global_mm": [
+          0,
+          0,
+          5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si",
+        "copy_no": 8
+      }
+    ],
+    "model_sha256": "df7212285f869f467ee293a2f983721a747cb173dcadd4c5f461df9950a9b16e",
+    "counts": {
+      "definitions": 2,
+      "instances": 8
+    },
+    "checks": {
+      "schema": "passed",
+      "analytic_geometry": "passed",
+      "evidence": "passed",
+      "geant4": "not_run",
+      "dd4hep": "not_run"
+    },
+    "scope": "Axis-aligned boxes and full z-axis tubes; translations only; analytic comparison tolerance 1e-7 mm. Quote presence is checked, not semantic truth. Backend validation must be run separately."
+  },
+  "provenance": {
+    "provider": "openai",
+    "model": "ark-code-latest",
+    "response_model": "auto",
+    "prompt_version": "0.1",
+    "source_sha256": "d3306d11c11676c9b7a7b1147de346771b366d0fc241d334aa55ca84ba0e8f24",
+    "duration_s": 69.03,
+    "usage": {
+      "completion_tokens": 2796,
+      "prompt_tokens": 1864,
+      "total_tokens": 4660,
+      "prompt_tokens_details": {
+        "cached_tokens": 1536
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 1444
+      }
+    }
+  }
+}

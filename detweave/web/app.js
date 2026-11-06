@@ -78,7 +78,7 @@ function updateControls() {
     examples: !state.examples.length,
   };
   for (const [id, inactive] of Object.entries(disabled)) $(id).disabled = state.busy || inactive;
-  for (const id of ["import", "provider", "base-url", "model-name", "api-key"]) $(id).disabled = state.busy;
+  for (const id of ["import", "provider", "base-url", "model-name", "api-key", "ark-thinking"]) $(id).disabled = state.busy;
   sourceInput.readOnly = state.busy;
   jsonInput.readOnly = state.busy;
   $("dirty-label").textContent = dirty ? "有尚未应用的原文修改" : "";
@@ -174,10 +174,12 @@ function setProvider(event) {
     $("base-url").value = ark ? arkCodingBase : "";
     model.value = ark ? arkCodingModel : "";
     $("api-key").value = "";
+    $("ark-thinking").value = "";
   }
   if (ark) model.setAttribute("list", "ark-coding-models");
   else model.removeAttribute("list");
   $("provider-fields").hidden = !live;
+  $("ark-thinking-fields").hidden = !ark;
   const privacy = "提取时会将讨论原文发送到所选服务。密钥只保留在当前页面内存中。";
   if (ark) $("provider-help").textContent =
     "模型栏可输入任意模型 ID。ark-code-latest 是服务端路由别名，可用模型取决于账号权限。" + privacy;
@@ -188,18 +190,21 @@ function configuredProvider() {
   const choice = $("provider").value;
   if (choice === "demo") return { kind: choice };
   const ark = choice === "ark-coding";
-  return {
+  const provider = {
     kind: ark ? "openai" : choice,
     base_url: $("base-url").value.trim() || (ark ? arkCodingBase : ""),
     model: $("model-name").value.trim() || (ark ? arkCodingModel : ""),
     api_key: $("api-key").value,
   };
+  const thinking = $("ark-thinking").value;
+  if (ark && ["enabled", "disabled"].includes(thinking)) provider.thinking = thinking;
+  return provider;
 }
 
 function publicProvenance(value) {
   if (!value || typeof value !== "object") return null;
   const result = {};
-  for (const key of ["provider", "model", "response_model", "prompt_version", "source_sha256"]) {
+  for (const key of ["provider", "model", "response_model", "thinking", "prompt_version", "source_sha256"]) {
     if (typeof value[key] === "string") result[key] = value[key].slice(0, 300);
   }
   if (Number.isFinite(value.duration_s)) result.duration_s = value.duration_s;
@@ -289,15 +294,17 @@ function evidenceCards(prefixes) {
   return [...fieldsFor(model)].filter(([path]) => prefixes.some((prefix) => path.startsWith(prefix + ".")))
     .map(([path, field]) => {
       const entry = model.evidence[path];
-      const validQuote = entry?.quote.trim() && model.source_text.includes(entry.quote);
+      const quotes = entry ? (Array.isArray(entry.quote) ? entry.quote : [entry.quote]) : [];
+      const hasQuote = quotes.some((quote) => quote.trim());
+      const validQuote = quotes.length > 0 && quotes.every((quote) => quote.trim() && model.source_text.includes(quote));
       const acceptable = validQuote && ["stated", "confirmed"].includes(entry.status);
       const kind = entry?.status || "missing";
       return '<details class="evidence"' + (acceptable ? "" : " open") + '><summary>' + esc(field.label)
         + ' <span class="badge ' + esc(kind) + '">' + esc(statusNames[kind]) + "</span></summary>"
         + '<p class="issue-path">' + esc(path) + "</p>"
-        + (entry?.quote ? '<blockquote>' + esc(entry.quote) + '</blockquote>' : '<p class="muted">暂无原文引句。</p>')
+        + (hasQuote ? quotes.map((quote) => '<blockquote>' + esc(quote) + '</blockquote>').join("") : '<p class="muted">暂无原文引句。</p>')
         + (entry?.note ? '<p class="muted">' + esc(entry.note) + '</p>' : "")
-        + (entry?.quote && !validQuote ? '<p class="error">引句未出现在原文中。</p>' : "")
+        + (hasQuote && !validQuote ? '<p class="error">引句未出现在原文中。</p>' : "")
         + (acceptable ? "" : '<button type="button" class="text-button" data-confirm="' + esc(path) + '">记录此值已确认</button>')
         + "</details>";
     }).join("");

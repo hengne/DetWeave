@@ -26,6 +26,8 @@ const fs=require('fs');const path=require('path');const assert=require('assert')
  await preview.goto('file://'+out+'/preview.html');await preview.screenshot({path:out+'/offline.png'});assert.equal(external.length,0);await preview.close();
  const zip=page.waitForEvent('download');await page.click('#export');await (await zip).saveAs(out+'/project.zip');assert(fs.readFileSync(out+'/project.zip').subarray(0,2).toString()==='PK');
  await page.selectOption('#provider','ark-coding');assert.equal(await page.inputValue('#base-url'),'https://ark.cn-beijing.volces.com/api/coding/v3');assert.equal(await page.inputValue('#model-name'),'ark-code-latest');
+ assert.equal(await page.evaluate(()=>configuredProvider().thinking),undefined);
+ await page.selectOption('#ark-thinking','disabled');assert.equal(await page.evaluate(()=>configuredProvider().thinking),'disabled');
  await page.fill('#api-key','DUMMY-SECRET-NOT-REAL');
  const project=await download('#project-download','project.json');assert(!project.includes('DUMMY-SECRET'));
  await page.click('#save-local');assert(!(await page.evaluate(()=>JSON.stringify(localStorage))).includes('DUMMY-SECRET'));
@@ -41,6 +43,11 @@ const fs=require('fs');const path=require('path');const assert=require('assert')
  await page.click('#apply-json');await page.waitForFunction(()=>document.querySelector('#issues').textContent.includes('assum') || document.querySelector('#issues').textContent.includes('修改') || document.querySelector('#stage').textContent.includes('草案'));
  assert(await page.isDisabled('#export'));
  await page.click('#undo');await page.waitForFunction(()=>!document.querySelector('#export').disabled);
+ const multi=JSON.parse(fs.readFileSync('examples/sampling.json','utf8'));
+ multi.evidence['placements.absorber.position_mm'].quote=['All x and y centres are 0 mm.','The first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.'];
+ await page.setInputFiles('#import-file',{name:'multi.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(multi))});
+ await page.waitForFunction(()=>!document.querySelector('#export').disabled);
+ assert(await page.locator('#details blockquote').count()>0);
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:out+'/mobile.png',fullPage:true});
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Mobile layout overflows');
  assert.deepEqual(errors,[]);await browser.close();console.log('UI checks passed: sample, projections, orbit, SVG/HTML/ZIP, offline preview, key privacy, Ark preset, draft gates, undo, mobile.');

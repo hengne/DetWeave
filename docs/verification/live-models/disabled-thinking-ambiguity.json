@@ -1,0 +1,120 @@
+[
+  {
+    "requested_model": "ark-code-latest",
+    "case": "conflict",
+    "clarification_present": true,
+    "export_blocked": true,
+    "passed": true,
+    "provenance": {
+      "provider": "openai",
+      "model": "ark-code-latest",
+      "response_model": "auto",
+      "thinking": "disabled",
+      "prompt_version": "0.1",
+      "source_sha256": "d36494613146ca8b5ffbd7fe5f1616543e7ad9acfde0b7d5ef9654fe17438d80",
+      "duration_s": 21.99,
+      "usage": {
+        "completion_tokens": 961,
+        "prompt_tokens": 1769,
+        "total_tokens": 2730,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      }
+    },
+    "issues": [
+      {
+        "code": "empty",
+        "message": "No detector placements have been specified."
+      },
+      {
+        "code": "unused",
+        "message": "Volumes without placements: polystyrene_layer, tungsten_layer"
+      },
+      {
+        "code": "clarification",
+        "message": "20个周期、每周期1 mm钨加5 mm聚苯乙烯，会得到20×(1+5)=120 mm总厚度，与“总厚度必须不超过100 mm”冲突。请明确应优先满足哪一项，或提供修改后的周期数/层厚；在您确认前不生成叠层placement，以免擅自更改要求。"
+      },
+      {
+        "code": "clarification",
+        "message": "冲突解决后，请确认每个周期沿+z的顺序是“钨片然后聚苯乙烯片”，还是相反；这会影响以原点为中心的各片z位置。"
+      }
+    ],
+    "instance_count": 0,
+    "elapsed_s": 22.0
+  },
+  {
+    "requested_model": "ark-code-latest",
+    "case": "missing",
+    "clarification_present": true,
+    "export_blocked": true,
+    "passed": true,
+    "provenance": {
+      "provider": "openai",
+      "model": "ark-code-latest",
+      "response_model": "auto",
+      "thinking": "disabled",
+      "prompt_version": "0.1",
+      "source_sha256": "a2c9d7f2193a9aa6aa146f9ce7184f9f37b36398ca0c936c513db49e3dfefce4",
+      "duration_s": 21.2,
+      "usage": {
+        "completion_tokens": 886,
+        "prompt_tokens": 1723,
+        "total_tokens": 2609,
+        "prompt_tokens_details": {
+          "cached_tokens": 1536
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      }
+    },
+    "issues": [
+      {
+        "code": "empty",
+        "message": "No detector placements have been specified."
+      },
+      {
+        "code": "unconfirmed",
+        "message": "世界尺寸尚未决定；此处仅为满足输出结构而采用占位值1000×1000×1000 mm，不代表已确定的几何参数。"
+      },
+      {
+        "code": "unconfirmed",
+        "message": "原文没有指定世界材料；暂以G4_AIR作为占位假设，需人工确认。"
+      },
+      {
+        "code": "clarification",
+        "message": "厚度“5”和横向“100见方”的单位是什么？是否均为mm？"
+      },
+      {
+        "code": "clarification",
+        "message": "“厚度先按5”和“横向大概100见方”是否同时适用于钨板和硅片？最终尺寸是否确定为厚度5、横向100×100（单位待确认）？"
+      },
+      {
+        "code": "clarification",
+        "message": "“十几层”具体是多少层？这是钨板与硅片合计层数，还是每种材料各自的层数？"
+      },
+      {
+        "code": "clarification",
+        "message": "各层的材料顺序如何安排，例如钨/硅交替，还是分别成组？起始层和结束层分别是什么材料？"
+      },
+      {
+        "code": "clarification",
+        "message": "各层间隙分别是多少？间隙是否全部相同，且是指相邻板表面之间的净距离？"
+      },
+      {
+        "code": "clarification",
+        "message": "世界的完整尺寸和材料是什么？当前1000×1000×1000 mm、G4_AIR仅为占位假设。"
+      },
+      {
+        "code": "clarification",
+        "message": "各层及整个层叠结构相对世界的摆放位置是什么？是否沿z轴排列，横向中心如何定位？"
+      }
+    ],
+    "instance_count": 0,
+    "elapsed_s": 21.2
+  }
+]

@@ -34,3 +34,10 @@ def test_demo_is_honest_and_matches_exact_source():
     with pytest.raises(ValueError):run_extraction('make a detector',{'kind':'demo'})
     result=run_extraction(examples()[0]['text'],{'kind':'demo'})
     assert result['report']['ready'] and result['provenance']['provider']=='demo'
+
+
+def test_thinking_is_explicit_opt_in():
+    config=dict(kind='openai',model='ark-code-latest',api_key='test',base_url='https://ark.cn-beijing.volces.com/api/coding/v3')
+    assert 'thinking' not in request_spec(config,'text')[3]
+    assert request_spec({**config,'thinking':'disabled'},'text')[3]['thinking']=={'type':'disabled'}
+    with pytest.raises(ProviderError):request_spec({**config,'thinking':'invalid'},'text')

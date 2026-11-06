@@ -1,0 +1,35 @@
+{
+  "provided": {
+    "model_sha256": "c6648be0be763bcde72f60bc8dbbe4ff2740e50e01e9981058c09e18c673a903",
+    "gdml": {
+      "backend": "Geant4",
+      "version": "$Name: geant4-11-01-patch-03 [MT]$",
+      "placements": 8,
+      "overlap_placements": 0,
+      "navigation_failures": 0,
+      "samples_per_placement": 10000,
+      "tolerance_mm": 0,
+      "seed": 12345,
+      "navigation_rays": 3,
+      "passed": true
+    },
+    "cpp": {
+      "backend": "Geant4",
+      "version": "$Name: geant4-11-01-patch-03 [MT]$",
+      "placements": 8,
+      "overlap_placements": 0,
+      "navigation_failures": 0,
+      "samples_per_placement": 10000,
+      "tolerance_mm": 0,
+      "seed": 12345,
+      "navigation_rays": 3,
+      "passed": true
+    },
+    "simulation": {
+      "particle": "geantino",
+      "events": 10,
+      "physics": "transportation only",
+      "exit_code": 0
+    }
+  }
+}

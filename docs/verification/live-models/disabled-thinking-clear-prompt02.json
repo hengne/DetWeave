@@ -1,0 +1,62 @@
+[
+  {
+    "requested_model": "ark-code-latest",
+    "case": "sampling",
+    "geometry_matches_reference": true,
+    "exportable": true,
+    "passed": true,
+    "provenance": {
+      "provider": "openai",
+      "model": "ark-code-latest",
+      "response_model": "auto",
+      "thinking": "disabled",
+      "prompt_version": "0.2",
+      "source_sha256": "a6a1c813947b3824a91aa7aa703611cb6c25310d4fdfebb226dad69b5de27cad",
+      "duration_s": 28.44,
+      "usage": {
+        "completion_tokens": 1549,
+        "prompt_tokens": 1960,
+        "total_tokens": 3509,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      }
+    },
+    "issues": [],
+    "instance_count": 8,
+    "elapsed_s": 28.44
+  },
+  {
+    "requested_model": "ark-code-latest",
+    "case": "chinese",
+    "geometry_matches_reference": true,
+    "exportable": true,
+    "passed": true,
+    "provenance": {
+      "provider": "openai",
+      "model": "ark-code-latest",
+      "response_model": "auto",
+      "thinking": "disabled",
+      "prompt_version": "0.2",
+      "source_sha256": "d3306d11c11676c9b7a7b1147de346771b366d0fc241d334aa55ca84ba0e8f24",
+      "duration_s": 21.86,
+      "usage": {
+        "completion_tokens": 1338,
+        "prompt_tokens": 1889,
+        "total_tokens": 3227,
+        "prompt_tokens_details": {
+          "cached_tokens": 1536
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      }
+    },
+    "issues": [],
+    "instance_count": 8,
+    "elapsed_s": 21.87
+  }
+]

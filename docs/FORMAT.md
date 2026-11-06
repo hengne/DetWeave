@@ -10,7 +10,7 @@ Schema `0.1` 的唯一来源为 `detweave/schema.json`，由 `scripts/make_schem
 - 最多 100 个定义、500 个放置定义、1,000 个展开实例；限制用于本地交互可靠性。
 - world 为以全局原点为中心的长方体。未明确的 world 尺寸与材料也必须标成假设。
 - `evidence` 覆盖 world 的尺寸／材料，各 volume 的 shape／material，各 placement 的 volume／parent／position／repeat。
-- 引文必须是 source_text 的精确子串。模型不能自称用户已确认；模型输出中的 confirmed 会降为 stated。
+- 引文必须是 source_text 的精确子串。`quote` 支持一个字符串或最多 12 个字符串组成的数组；多段不连续原文必须分开列出，每段单独核对，不允许拼接后冒充连续原文。模型不能自称用户已确认；模型输出中的 confirmed 会降为 stated。
 - derived 是待人审阅的推导，首版不会把自由文本推导当作已验证数学公式。
 - JSON 编辑是专家入口；更改参数后应同步更新依据。可导出不是科学语义自动认证。
 

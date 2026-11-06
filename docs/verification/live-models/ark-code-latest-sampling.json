@@ -1,0 +1,403 @@
+{
+  "model": {
+    "schema_version": "0.1",
+    "title": "Four tungsten/silicon periods along z",
+    "source_text": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+    "world": {
+      "size_mm": [
+        200,
+        200,
+        200
+      ],
+      "material": "G4_AIR"
+    },
+    "volumes": [
+      {
+        "id": "tungsten_plate",
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W"
+      },
+      {
+        "id": "silicon_plate",
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si"
+      }
+    ],
+    "placements": [
+      {
+        "id": "tungsten_plates",
+        "volume": "tungsten_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -5.5
+        ],
+        "repeat": {
+          "count": 4,
+          "step_mm": [
+            0,
+            0,
+            3
+          ]
+        }
+      },
+      {
+        "id": "silicon_plates",
+        "volume": "silicon_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -4
+        ],
+        "repeat": {
+          "count": 4,
+          "step_mm": [
+            0,
+            0,
+            3
+          ]
+        }
+      }
+    ],
+    "evidence": {
+      "world.size_mm": {
+        "status": "stated",
+        "quote": "The world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.",
+        "note": "Full world-box dimensions are 200 × 200 × 200 mm; the world is centred at the global origin."
+      },
+      "world.material": {
+        "status": "stated",
+        "quote": "The world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.",
+        "note": "World material is G4_AIR."
+      },
+      "volumes.tungsten_plate.shape": {
+        "status": "stated",
+        "quote": "Each tungsten plate is a box 80 × 60 × 1 mm, material G4_W.",
+        "note": "Tungsten plate is a box with full dimensions 80 × 60 × 1 mm."
+      },
+      "volumes.tungsten_plate.material": {
+        "status": "stated",
+        "quote": "Each tungsten plate is a box 80 × 60 × 1 mm, material G4_W.",
+        "note": "Tungsten plate material is G4_W."
+      },
+      "volumes.silicon_plate.shape": {
+        "status": "stated",
+        "quote": "Each silicon plate is a box 80 × 60 × 2 mm, material G4_Si.",
+        "note": "Silicon plate is a box with full dimensions 80 × 60 × 2 mm."
+      },
+      "volumes.silicon_plate.material": {
+        "status": "stated",
+        "quote": "Each silicon plate is a box 80 × 60 × 2 mm, material G4_Si.",
+        "note": "Silicon plate material is G4_Si."
+      },
+      "placements.tungsten_plates.volume": {
+        "status": "stated",
+        "quote": "Each tungsten plate is a box 80 × 60 × 1 mm, material G4_W.",
+        "note": "The repeated tungsten placement references the shared tungsten_plate volume definition."
+      },
+      "placements.tungsten_plates.parent": {
+        "status": "stated",
+        "quote": "Place both plate types directly in world.",
+        "note": "Tungsten plates are placed directly in world."
+      },
+      "placements.tungsten_plates.position_mm": {
+        "status": "stated",
+        "quote": "Place both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.",
+        "note": "The base tungsten centre is (0, 0, -5.5) mm."
+      },
+      "placements.tungsten_plates.repeat": {
+        "status": "stated",
+        "quote": "The first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.",
+        "note": "Four tungsten plates are represented with a 3 mm step along z."
+      },
+      "placements.silicon_plates.volume": {
+        "status": "stated",
+        "quote": "Each silicon plate is a box 80 × 60 × 2 mm, material G4_Si.",
+        "note": "The repeated silicon placement references the shared silicon_plate volume definition."
+      },
+      "placements.silicon_plates.parent": {
+        "status": "stated",
+        "quote": "Place both plate types directly in world.",
+        "note": "Silicon plates are placed directly in world."
+      },
+      "placements.silicon_plates.position_mm": {
+        "status": "stated",
+        "quote": "Place both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.",
+        "note": "The base silicon centre is (0, 0, -4) mm; the x and y centre statement applies to both plate types."
+      },
+      "placements.silicon_plates.repeat": {
+        "status": "stated",
+        "quote": "The first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.",
+        "note": "Four silicon plates are represented with a 3 mm step along z."
+      }
+    },
+    "questions": [],
+    "notes": [
+      "The two repeated placements preserve four tungsten plates, four silicon plates, and their direct world-parent topology.",
+      "No rotations, optical properties, or sensitive detectors are included, as requested."
+    ]
+  },
+  "report": {
+    "ready": true,
+    "stage": "exportable",
+    "issues": [],
+    "instances": [
+      {
+        "id": "tungsten_plates__0",
+        "origin": "tungsten_plates",
+        "volume": "tungsten_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -5.5
+        ],
+        "global_mm": [
+          0,
+          0,
+          -5.5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W",
+        "copy_no": 1
+      },
+      {
+        "id": "tungsten_plates__1",
+        "origin": "tungsten_plates",
+        "volume": "tungsten_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -2.5
+        ],
+        "global_mm": [
+          0,
+          0,
+          -2.5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W",
+        "copy_no": 2
+      },
+      {
+        "id": "tungsten_plates__2",
+        "origin": "tungsten_plates",
+        "volume": "tungsten_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          0.5
+        ],
+        "global_mm": [
+          0,
+          0,
+          0.5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W",
+        "copy_no": 3
+      },
+      {
+        "id": "tungsten_plates__3",
+        "origin": "tungsten_plates",
+        "volume": "tungsten_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          3.5
+        ],
+        "global_mm": [
+          0,
+          0,
+          3.5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            1
+          ]
+        },
+        "material": "G4_W",
+        "copy_no": 4
+      },
+      {
+        "id": "silicon_plates__0",
+        "origin": "silicon_plates",
+        "volume": "silicon_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -4
+        ],
+        "global_mm": [
+          0,
+          0,
+          -4
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si",
+        "copy_no": 5
+      },
+      {
+        "id": "silicon_plates__1",
+        "origin": "silicon_plates",
+        "volume": "silicon_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          -1
+        ],
+        "global_mm": [
+          0,
+          0,
+          -1
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si",
+        "copy_no": 6
+      },
+      {
+        "id": "silicon_plates__2",
+        "origin": "silicon_plates",
+        "volume": "silicon_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          2
+        ],
+        "global_mm": [
+          0,
+          0,
+          2
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si",
+        "copy_no": 7
+      },
+      {
+        "id": "silicon_plates__3",
+        "origin": "silicon_plates",
+        "volume": "silicon_plate",
+        "parent": "world",
+        "position_mm": [
+          0,
+          0,
+          5
+        ],
+        "global_mm": [
+          0,
+          0,
+          5
+        ],
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            80,
+            60,
+            2
+          ]
+        },
+        "material": "G4_Si",
+        "copy_no": 8
+      }
+    ],
+    "model_sha256": "c6648be0be763bcde72f60bc8dbbe4ff2740e50e01e9981058c09e18c673a903",
+    "counts": {
+      "definitions": 2,
+      "instances": 8
+    },
+    "checks": {
+      "schema": "passed",
+      "analytic_geometry": "passed",
+      "evidence": "passed",
+      "geant4": "not_run",
+      "dd4hep": "not_run"
+    },
+    "scope": "Axis-aligned boxes and full z-axis tubes; translations only; analytic comparison tolerance 1e-7 mm. Quote presence is checked, not semantic truth. Backend validation must be run separately."
+  },
+  "provenance": {
+    "provider": "openai",
+    "model": "ark-code-latest",
+    "response_model": "auto",
+    "prompt_version": "0.1",
+    "source_sha256": "a6a1c813947b3824a91aa7aa703611cb6c25310d4fdfebb226dad69b5de27cad",
+    "duration_s": 103.75,
+    "usage": {
+      "completion_tokens": 4319,
+      "prompt_tokens": 1935,
+      "total_tokens": 6254,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 2651
+      }
+    }
+  }
+}

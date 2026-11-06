@@ -154,8 +154,8 @@ def validate(model):
             issue("blocker", "evidence_missing", path, "A source quote or an explicit user confirmation is required.")
         elif evidence["status"] in ("assumed", "unresolved"):
             issue("blocker", "unconfirmed", path, evidence["note"] or "This design assumption needs confirmation.")
-        elif not evidence["quote"].strip() or evidence["quote"] not in model["source_text"]:
-            issue("blocker", "source_mismatch", path, "Evidence quote must occur verbatim in source text.")
+        elif not all(q.strip() and q in model["source_text"] for q in (evidence["quote"] if isinstance(evidence["quote"], list) else [evidence["quote"]])):
+            issue("blocker", "source_mismatch", path, "Every evidence quote must occur verbatim in source text.")
         elif evidence["status"] == "derived":
             # A free-form derivation is not a machine-verified calculation.
             issue("blocker", "derivation_review", path, "Review and confirm this derived geometry value before export.")

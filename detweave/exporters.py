@@ -144,7 +144,7 @@ def project_files(model, provenance=None):
         files["geant4/"+name]=(ROOT/"templates"/name).read_text()
     files.update(export_dd4hep(model,instances,MATERIALS))
     if isinstance(provenance, dict):
-        allowed = ("provider", "model", "response_model", "prompt_version", "source_sha256")
+        allowed = ("provider", "model", "response_model", "thinking", "prompt_version", "source_sha256")
         clean = {key: provenance[key][:300] for key in allowed if isinstance(provenance.get(key), str)}
         clean["exported_model_sha256"] = report["model_sha256"]
         clean["note"] = "Extraction metadata refers to its recorded source hash; subsequent human edits are represented by the exported model."

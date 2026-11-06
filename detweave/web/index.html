@@ -79,6 +79,15 @@
               </datalist>
               <label for="api-key">API Key <span class="muted">仅本次会话</span></label>
               <input id="api-key" type="password" autocomplete="off" placeholder="输入该服务的 API Key">
+              <div id="ark-thinking-fields" class="provider-fields" hidden>
+                <label for="ark-thinking">深度思考</label>
+                <select id="ark-thinking" aria-describedby="ark-thinking-help">
+                  <option value="">默认（由服务商决定）</option>
+                  <option value="disabled">关闭深度思考</option>
+                  <option value="enabled">开启深度思考</option>
+                </select>
+                <p id="ark-thinking-help" class="fine-print">显式开关需模型支持。接口拒绝时会显示错误。</p>
+              </div>
             </div>
             <p id="provider-help" class="fine-print">仅匹配内置合成示例，适合离线体验。</p>
           </div>

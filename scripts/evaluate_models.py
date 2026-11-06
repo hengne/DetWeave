@@ -32,6 +32,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base-url',required=True)
     parser.add_argument('--models',nargs='+',default=['ark-code-latest'])
+    parser.add_argument('--thinking',choices=['enabled','disabled','auto'])
     parser.add_argument('--cases',nargs='+',default=['sampling','chinese','conflict','missing'])
     parser.add_argument('--output',type=Path,default=Path('local/live-evaluation'))
     args=parser.parse_args()
@@ -48,7 +49,7 @@ def main():
         for name in args.cases:
             start=time.monotonic();record={'requested_model':model_name,'case':name}
             try:
-                model,provenance=extract(cases[name],dict(kind='openai',base_url=args.base_url,model=model_name,api_key=key))
+                model,provenance=extract(cases[name],dict(kind='openai',base_url=args.base_url,model=model_name,api_key=key,thinking=args.thinking))
                 report=validate(model)
                 if name in ('sampling','chinese'):
                     matched=fingerprint(report['instances'])==expected and model.get('world')==sample['world']

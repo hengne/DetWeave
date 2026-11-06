@@ -170,3 +170,13 @@ def test_export_provenance_allowlist_excludes_credentials(sample):
         assert meta['response_model']=='auto'
         for name in archive.namelist():assert b'DO-NOT-EXPORT' not in archive.read(name)
         assert 'base_url' not in meta and 'nested' not in meta
+
+
+def test_noncontiguous_evidence_is_explicit_and_each_quote_verified(sample):
+    path='placements.sensor.position_mm'
+    sample['evidence'][path]['quote']=['All x and y centres are 0 mm.','The first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.']
+    assert validate(sample)['ready']
+    sample['evidence'][path]['quote'].append('invented statement')
+    assert 'source_mismatch' in codes(sample)
+    sample['evidence'][path]['quote']=[]
+    assert 'schema' in codes(sample)

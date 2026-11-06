@@ -1,0 +1,219 @@
+{
+  "model": {
+    "schema_version": "0.1",
+    "title": "多层钨板与硅片结构参数讨论",
+    "source_text": "讨论记录：想做十几层钨板和硅片，厚度先按5，横向大概100见方。先不定单位、层数、各层间隙、世界尺寸和摆放位置。请把未决定的事项列出来，不能擅自认定。",
+    "world": {
+      "size_mm": [
+        1000,
+        1000,
+        1000
+      ],
+      "material": "G4_AIR"
+    },
+    "volumes": [],
+    "placements": [],
+    "evidence": {
+      "world.size_mm": {
+        "status": "assumed",
+        "quote": "先不定单位、层数、各层间隙、世界尺寸和摆放位置",
+        "note": "用户明确说世界尺寸未定；为满足模式，暂设占位为 1000×1000×1000 mm，待用户确认。"
+      },
+      "world.material": {
+        "status": "assumed",
+        "quote": "先不定单位、层数、各层间隙、世界尺寸和摆放位置",
+        "note": "世界材料未指定，占位设为 G4_AIR，待用户确认。"
+      },
+      "volumes.tungsten_plate.shape": {
+        "status": "unresolved",
+        "quote": "想做十几层钨板和硅片，厚度先按5，横向大概100见方",
+        "note": "钨板形状可能为约 100×100×5 的盒体，但单位、精确尺寸和轴向未定，暂不建立几何体。"
+      },
+      "volumes.tungsten_plate.material": {
+        "status": "stated",
+        "quote": "钨板",
+        "note": "材料明确为钨，对应模式中的 G4_W。"
+      },
+      "volumes.silicon_wafer.shape": {
+        "status": "unresolved",
+        "quote": "想做十几层钨板和硅片，厚度先按5，横向大概100见方",
+        "note": "硅片形状可能为约 100×100×5 的盒体，但单位、精确尺寸和轴向未定，暂不建立几何体。"
+      },
+      "volumes.silicon_wafer.material": {
+        "status": "stated",
+        "quote": "硅片",
+        "note": "材料明确为硅，对应模式中的 G4_Si。"
+      },
+      "layers.count": {
+        "status": "unresolved",
+        "quote": "十几层",
+        "note": "总层数只说“十几层”，未给出具体数值。"
+      },
+      "layers.arrangement": {
+        "status": "unresolved",
+        "quote": "钨板和硅片",
+        "note": "未说明钨板与硅片是交替叠放、分开放置还是其他结构。"
+      },
+      "layers.gap": {
+        "status": "unresolved",
+        "quote": "各层间隙",
+        "note": "各层之间的间隙未定。"
+      },
+      "placement.position": {
+        "status": "unresolved",
+        "quote": "摆放位置",
+        "note": "摆放位置未定，因此未创建任何 placement。"
+      },
+      "units": {
+        "status": "unresolved",
+        "quote": "先不定单位",
+        "note": "单位未定，所有尺寸暂不能固化。"
+      },
+      "lateral_size": {
+        "status": "unresolved",
+        "quote": "横向大概100见方",
+        "note": "横向尺寸仅描述为“大概100见方”，未确认精确值。"
+      },
+      "thickness": {
+        "status": "unresolved",
+        "quote": "厚度先按5",
+        "note": "厚度暂定“5”，但单位和最终取值未确认。"
+      }
+    },
+    "questions": [
+      {
+        "id": "units_and_dimensions",
+        "question": "请确认长度单位（mm、cm 或其他），并给出钨板和硅片的精确横向尺寸与厚度（当前描述约为 100×100、厚度 5）。",
+        "targets": [
+          "units",
+          "volumes.tungsten_plate.shape",
+          "volumes.silicon_wafer.shape",
+          "thickness",
+          "lateral_size"
+        ]
+      },
+      {
+        "id": "layer_count_and_arrangement",
+        "question": "请明确总层数（“十几层”具体是多少），以及钨板/硅片各自的层数和排列方式（交替？分组？）。",
+        "targets": [
+          "layers.count",
+          "layers.arrangement"
+        ]
+      },
+      {
+        "id": "layer_gap",
+        "question": "请确定各层之间的间隙（如有），以及层间是否填充其他材料。",
+        "targets": [
+          "layers.gap"
+        ]
+      },
+      {
+        "id": "world_size_and_material",
+        "question": "请确定世界尺寸和世界材料（当前模式占位为 1000×1000×1000 mm、G4_AIR，仅用于满足模式，不是最终设定）。",
+        "targets": [
+          "world.size_mm",
+          "world.material"
+        ]
+      },
+      {
+        "id": "placement_and_orientation",
+        "question": "请确定各层的摆放位置和方向（如堆叠轴向、中心对齐、偏移量），以及是否需要父层级或重复放置。若需求超出当前几何模式可表达的范围，也请说明。",
+        "targets": [
+          "placements.position",
+          "placements.repeat"
+        ]
+      }
+    ],
+    "notes": [
+      "钨板和硅片的几何体暂未创建，因为单位及精确尺寸未定；待确认后再补充 volumes 和 placements。",
+      "模式中的世界体积为占位假设，不代表最终设计。所有未定事项均已列出，未擅自设定单位、层数、间隙、世界尺寸和摆放位置。"
+    ]
+  },
+  "report": {
+    "ready": false,
+    "stage": "draft",
+    "issues": [
+      {
+        "level": "blocker",
+        "code": "empty",
+        "path": "placements",
+        "message": "No detector placements have been specified."
+      },
+      {
+        "level": "blocker",
+        "code": "unconfirmed",
+        "path": "world.size_mm",
+        "message": "用户明确说世界尺寸未定；为满足模式，暂设占位为 1000×1000×1000 mm，待用户确认。"
+      },
+      {
+        "level": "blocker",
+        "code": "unconfirmed",
+        "path": "world.material",
+        "message": "世界材料未指定，占位设为 G4_AIR，待用户确认。"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "units_and_dimensions",
+        "message": "请确认长度单位（mm、cm 或其他），并给出钨板和硅片的精确横向尺寸与厚度（当前描述约为 100×100、厚度 5）。"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "layer_count_and_arrangement",
+        "message": "请明确总层数（“十几层”具体是多少），以及钨板/硅片各自的层数和排列方式（交替？分组？）。"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "layer_gap",
+        "message": "请确定各层之间的间隙（如有），以及层间是否填充其他材料。"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "world_size_and_material",
+        "message": "请确定世界尺寸和世界材料（当前模式占位为 1000×1000×1000 mm、G4_AIR，仅用于满足模式，不是最终设定）。"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "placement_and_orientation",
+        "message": "请确定各层的摆放位置和方向（如堆叠轴向、中心对齐、偏移量），以及是否需要父层级或重复放置。若需求超出当前几何模式可表达的范围，也请说明。"
+      }
+    ],
+    "instances": [],
+    "model_sha256": "26e72f43b6cff0b80a8cfba4e48724b3f3ede2c8fa28fce763c47a91d4b41fb7",
+    "counts": {
+      "definitions": 0,
+      "instances": 0
+    },
+    "checks": {
+      "schema": "passed",
+      "analytic_geometry": "passed",
+      "evidence": "needs_review",
+      "geant4": "not_run",
+      "dd4hep": "not_run"
+    },
+    "scope": "Axis-aligned boxes and full z-axis tubes; translations only; analytic comparison tolerance 1e-7 mm. Quote presence is checked, not semantic truth. Backend validation must be run separately."
+  },
+  "provenance": {
+    "provider": "openai",
+    "model": "deepseek-v4-flash",
+    "response_model": "deepseek-v4-flash-ga-260731",
+    "prompt_version": "0.1",
+    "source_sha256": "a2c9d7f2193a9aa6aa146f9ce7184f9f37b36398ca0c936c513db49e3dfefce4",
+    "duration_s": 54.06,
+    "usage": {
+      "completion_tokens": 5126,
+      "prompt_tokens": 1829,
+      "total_tokens": 6955,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 3813
+      }
+    }
+  }
+}

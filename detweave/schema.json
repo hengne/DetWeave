@@ -222,8 +222,22 @@
             ]
           },
           "quote": {
-            "type": "string",
-            "maxLength": 2000
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "minItems": 1,
+                "maxItems": 12
+              }
+            ]
           },
           "note": {
             "type": "string",

@@ -1,0 +1,162 @@
+{
+  "model": {
+    "schema_version": "0.1",
+    "title": "钨/聚苯乙烯叠层（存在总厚度冲突）",
+    "source_text": "合成测试会议：世界是400×400×400 mm的G4_AIR盒，位于原点。做20个钨/聚苯乙烯周期，钨G4_W每片1 mm厚，聚苯乙烯G4_POLYSTYRENE每片5 mm厚，横向100×100 mm，沿z连续叠放，整个叠层中心位于原点，无间隙。但是总厚度必须不超过100 mm。不要擅自更改任何一项，遇到冲突请提问。",
+    "world": {
+      "size_mm": [
+        400,
+        400,
+        400
+      ],
+      "material": "G4_AIR"
+    },
+    "volumes": [
+      {
+        "id": "tungsten_layer",
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            100,
+            100,
+            1
+          ]
+        },
+        "material": "G4_W"
+      },
+      {
+        "id": "polystyrene_layer",
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            100,
+            100,
+            5
+          ]
+        },
+        "material": "G4_POLYSTYRENE"
+      }
+    ],
+    "placements": [],
+    "evidence": {
+      "world.size_mm": {
+        "status": "stated",
+        "quote": "世界是400×400×400 mm的G4_AIR盒",
+        "note": "世界盒全尺寸为400×400×400 mm。"
+      },
+      "world.material": {
+        "status": "stated",
+        "quote": "世界是400×400×400 mm的G4_AIR盒",
+        "note": "世界材料为G4_AIR。"
+      },
+      "volumes.tungsten_layer.shape": {
+        "status": "stated",
+        "quote": "钨G4_W每片1 mm厚，聚苯乙烯G4_POLYSTYRENE每片5 mm厚，横向100×100 mm",
+        "note": "钨片为100×100×1 mm盒体，厚度沿z。"
+      },
+      "volumes.tungsten_layer.material": {
+        "status": "stated",
+        "quote": "钨G4_W每片1 mm厚",
+        "note": "钨片材料为G4_W。"
+      },
+      "volumes.polystyrene_layer.shape": {
+        "status": "stated",
+        "quote": "钨G4_W每片1 mm厚，聚苯乙烯G4_POLYSTYRENE每片5 mm厚，横向100×100 mm",
+        "note": "聚苯乙烯片为100×100×5 mm盒体，厚度沿z。"
+      },
+      "volumes.polystyrene_layer.material": {
+        "status": "stated",
+        "quote": "聚苯乙烯G4_POLYSTYRENE每片5 mm厚",
+        "note": "聚苯乙烯片材料为G4_POLYSTYRENE。"
+      }
+    },
+    "questions": [
+      {
+        "id": "stack_thickness_conflict",
+        "question": "20个周期、每周期1 mm钨加5 mm聚苯乙烯，会得到20×(1+5)=120 mm总厚度，与“总厚度必须不超过100 mm”冲突。请明确应优先满足哪一项，或提供修改后的周期数/层厚；在您确认前不生成叠层placement，以免擅自更改要求。",
+        "targets": [
+          "20个钨/聚苯乙烯周期",
+          "钨每片1 mm厚",
+          "聚苯乙烯每片5 mm厚",
+          "总厚度必须不超过100 mm"
+        ]
+      },
+      {
+        "id": "layer_order",
+        "question": "冲突解决后，请确认每个周期沿+z的顺序是“钨片然后聚苯乙烯片”，还是相反；这会影响以原点为中心的各片z位置。",
+        "targets": [
+          "沿z连续叠放",
+          "整个叠层中心位于原点"
+        ]
+      }
+    ],
+    "notes": [
+      "未擅自减少周期数或修改层厚；因120 mm与不超过100 mm的要求冲突，叠层placements暂时留空。",
+      "世界位于原点；世界本身不需要额外placement。"
+    ]
+  },
+  "report": {
+    "ready": false,
+    "stage": "draft",
+    "issues": [
+      {
+        "level": "blocker",
+        "code": "empty",
+        "path": "placements",
+        "message": "No detector placements have been specified."
+      },
+      {
+        "level": "blocker",
+        "code": "unused",
+        "path": "volumes",
+        "message": "Volumes without placements: polystyrene_layer, tungsten_layer"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "stack_thickness_conflict",
+        "message": "20个周期、每周期1 mm钨加5 mm聚苯乙烯，会得到20×(1+5)=120 mm总厚度，与“总厚度必须不超过100 mm”冲突。请明确应优先满足哪一项，或提供修改后的周期数/层厚；在您确认前不生成叠层placement，以免擅自更改要求。"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "layer_order",
+        "message": "冲突解决后，请确认每个周期沿+z的顺序是“钨片然后聚苯乙烯片”，还是相反；这会影响以原点为中心的各片z位置。"
+      }
+    ],
+    "instances": [],
+    "model_sha256": "9e1d4675fea23702bdb307743c16771aea457bef30144d58948ab775175299d9",
+    "counts": {
+      "definitions": 2,
+      "instances": 0
+    },
+    "checks": {
+      "schema": "passed",
+      "analytic_geometry": "passed",
+      "evidence": "needs_review",
+      "geant4": "not_run",
+      "dd4hep": "not_run"
+    },
+    "scope": "Axis-aligned boxes and full z-axis tubes; translations only; analytic comparison tolerance 1e-7 mm. Quote presence is checked, not semantic truth. Backend validation must be run separately."
+  },
+  "provenance": {
+    "provider": "openai",
+    "model": "ark-code-latest",
+    "response_model": "auto",
+    "thinking": "disabled",
+    "prompt_version": "0.1",
+    "source_sha256": "d36494613146ca8b5ffbd7fe5f1616543e7ad9acfde0b7d5ef9654fe17438d80",
+    "duration_s": 21.99,
+    "usage": {
+      "completion_tokens": 961,
+      "prompt_tokens": 1769,
+      "total_tokens": 2730,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    }
+  }
+}

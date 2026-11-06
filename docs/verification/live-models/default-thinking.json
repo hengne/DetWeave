@@ -1,0 +1,215 @@
+[
+  {
+    "requested_model": "ark-code-latest",
+    "case": "sampling",
+    "geometry_matches_reference": true,
+    "exportable": true,
+    "passed": true,
+    "provenance": {
+      "provider": "openai",
+      "model": "ark-code-latest",
+      "response_model": "auto",
+      "prompt_version": "0.1",
+      "source_sha256": "a6a1c813947b3824a91aa7aa703611cb6c25310d4fdfebb226dad69b5de27cad",
+      "duration_s": 103.75,
+      "usage": {
+        "completion_tokens": 4319,
+        "prompt_tokens": 1935,
+        "total_tokens": 6254,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 2651
+        }
+      }
+    },
+    "issues": [],
+    "instance_count": 8,
+    "elapsed_s": 103.76
+  },
+  {
+    "requested_model": "ark-code-latest",
+    "case": "chinese",
+    "geometry_matches_reference": true,
+    "exportable": true,
+    "passed": true,
+    "provenance": {
+      "provider": "openai",
+      "model": "ark-code-latest",
+      "response_model": "auto",
+      "prompt_version": "0.1",
+      "source_sha256": "d3306d11c11676c9b7a7b1147de346771b366d0fc241d334aa55ca84ba0e8f24",
+      "duration_s": 69.03,
+      "usage": {
+        "completion_tokens": 2796,
+        "prompt_tokens": 1864,
+        "total_tokens": 4660,
+        "prompt_tokens_details": {
+          "cached_tokens": 1536
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1444
+        }
+      }
+    },
+    "issues": [],
+    "instance_count": 8,
+    "elapsed_s": 69.04
+  },
+  {
+    "requested_model": "ark-code-latest",
+    "case": "conflict",
+    "passed": false,
+    "error": "Provider timed out after 120 seconds. Try a faster model or a shorter discussion.",
+    "elapsed_s": 120.18
+  },
+  {
+    "requested_model": "ark-code-latest",
+    "case": "missing",
+    "passed": false,
+    "error": "Provider timed out after 120 seconds. Try a faster model or a shorter discussion.",
+    "elapsed_s": 120.19
+  },
+  {
+    "requested_model": "deepseek-v4-flash",
+    "case": "sampling",
+    "geometry_matches_reference": true,
+    "exportable": false,
+    "passed": false,
+    "provenance": {
+      "provider": "openai",
+      "model": "deepseek-v4-flash",
+      "response_model": "deepseek-v4-flash-ga-260731",
+      "prompt_version": "0.1",
+      "source_sha256": "a6a1c813947b3824a91aa7aa703611cb6c25310d4fdfebb226dad69b5de27cad",
+      "duration_s": 107.34,
+      "usage": {
+        "completion_tokens": 8581,
+        "prompt_tokens": 1973,
+        "total_tokens": 10554,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 6986
+        }
+      }
+    },
+    "issues": [
+      {
+        "code": "source_mismatch",
+        "message": "Evidence quote must occur verbatim in source text."
+      }
+    ],
+    "instance_count": 8,
+    "elapsed_s": 107.34
+  },
+  {
+    "requested_model": "deepseek-v4-flash",
+    "case": "chinese",
+    "geometry_matches_reference": true,
+    "exportable": false,
+    "passed": false,
+    "provenance": {
+      "provider": "openai",
+      "model": "deepseek-v4-flash",
+      "response_model": "deepseek-v4-flash-ga-260731",
+      "prompt_version": "0.1",
+      "source_sha256": "d3306d11c11676c9b7a7b1147de346771b366d0fc241d334aa55ca84ba0e8f24",
+      "duration_s": 107.57,
+      "usage": {
+        "completion_tokens": 10715,
+        "prompt_tokens": 1905,
+        "total_tokens": 12620,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 9230
+        }
+      }
+    },
+    "issues": [
+      {
+        "code": "evidence_missing",
+        "message": "A source quote or an explicit user confirmation is required."
+      },
+      {
+        "code": "evidence_missing",
+        "message": "A source quote or an explicit user confirmation is required."
+      }
+    ],
+    "instance_count": 8,
+    "elapsed_s": 107.57
+  },
+  {
+    "requested_model": "deepseek-v4-flash",
+    "case": "conflict",
+    "passed": false,
+    "error": "Provider timed out after 120 seconds. Try a faster model or a shorter discussion.",
+    "elapsed_s": 120.17
+  },
+  {
+    "requested_model": "deepseek-v4-flash",
+    "case": "missing",
+    "clarification_present": true,
+    "export_blocked": true,
+    "passed": true,
+    "provenance": {
+      "provider": "openai",
+      "model": "deepseek-v4-flash",
+      "response_model": "deepseek-v4-flash-ga-260731",
+      "prompt_version": "0.1",
+      "source_sha256": "a2c9d7f2193a9aa6aa146f9ce7184f9f37b36398ca0c936c513db49e3dfefce4",
+      "duration_s": 54.06,
+      "usage": {
+        "completion_tokens": 5126,
+        "prompt_tokens": 1829,
+        "total_tokens": 6955,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 3813
+        }
+      }
+    },
+    "issues": [
+      {
+        "code": "empty",
+        "message": "No detector placements have been specified."
+      },
+      {
+        "code": "unconfirmed",
+        "message": "用户明确说世界尺寸未定；为满足模式，暂设占位为 1000×1000×1000 mm，待用户确认。"
+      },
+      {
+        "code": "unconfirmed",
+        "message": "世界材料未指定，占位设为 G4_AIR，待用户确认。"
+      },
+      {
+        "code": "clarification",
+        "message": "请确认长度单位（mm、cm 或其他），并给出钨板和硅片的精确横向尺寸与厚度（当前描述约为 100×100、厚度 5）。"
+      },
+      {
+        "code": "clarification",
+        "message": "请明确总层数（“十几层”具体是多少），以及钨板/硅片各自的层数和排列方式（交替？分组？）。"
+      },
+      {
+        "code": "clarification",
+        "message": "请确定各层之间的间隙（如有），以及层间是否填充其他材料。"
+      },
+      {
+        "code": "clarification",
+        "message": "请确定世界尺寸和世界材料（当前模式占位为 1000×1000×1000 mm、G4_AIR，仅用于满足模式，不是最终设定）。"
+      },
+      {
+        "code": "clarification",
+        "message": "请确定各层的摆放位置和方向（如堆叠轴向、中心对齐、偏移量），以及是否需要父层级或重复放置。若需求超出当前几何模式可表达的范围，也请说明。"
+      }
+    ],
+    "instance_count": 0,
+    "elapsed_s": 54.07
+  }
+]

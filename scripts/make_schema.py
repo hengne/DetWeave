@@ -14,7 +14,7 @@ number = dict(type="number", minimum=-1e7, maximum=1e7)
 positive = dict(type="number", exclusiveMinimum=0, maximum=1e7)
 vec = array(number, 3, 3)
 size = array(positive, 3, 3)
-evidence = obj(dict(status=dict(enum=["stated", "confirmed", "derived", "assumed", "unresolved"]), quote=text, note=text))
+evidence = obj(dict(status=dict(enum=["stated", "confirmed", "derived", "assumed", "unresolved"]), quote=dict(oneOf=[text,array(dict(type="string",minLength=1,maxLength=2000),1,12)]), note=text))
 shape = dict(oneOf=[obj(dict(type=dict(const="box"), size_mm=size)), obj(dict(type=dict(const="tube"), rmin_mm=dict(type="number", minimum=0, maximum=1e7), rmax_mm=positive, length_mm=positive))])
 material = dict(enum=["G4_AIR", "G4_Galactic", "G4_W", "G4_Pb", "G4_Si", "G4_Al", "G4_Fe", "G4_Cu", "G4_POLYSTYRENE", "G4_SILICON_DIOXIDE", "G4_CESIUM_IODIDE", "G4_PbWO4"])
 schema = obj(dict(
