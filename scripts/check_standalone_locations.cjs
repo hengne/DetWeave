@@ -15,7 +15,11 @@ const settings = { acceptDownloads: true, viewport: { width: 1180, height: 850 }
 
 async function ready(page, address) {
   await page.goto(address);
-  await page.waitForFunction(() => !document.querySelector("#export").disabled);
+  await waitForReady(page);
+}
+
+async function waitForReady(page) {
+  await page.waitForFunction(() => document.querySelector("#export")?.disabled === false);
 }
 
 async function newProject(page, title) {
@@ -55,10 +59,14 @@ async function checkDirectFile(browser) {
     assert.match(await page.locator("#project-folder").innerText(), /^Browser project library/);
     const id = await page.inputValue("#project-menu");
     await page.reload();
+    await waitForReady(page);
     await page.waitForFunction((projectId) => [...document.querySelector("#project-menu").options]
       .some((option) => option.value === projectId), id);
     await page.selectOption("#project-menu", id);
-    await page.waitForFunction(() => document.querySelector("#project-title-input").value === "Offline browser library");
+    await page.waitForFunction(() => document.querySelector("#project-title-input").value === "Offline browser library", null, { timeout: 5000 })
+      .catch(async (error) => {
+        throw new Error("Could not reopen the offline project: " + await page.locator("#project-message").textContent(), { cause: error });
+      });
     await page.selectOption("#language", "zh-CN");
     assert.match(await page.locator("#project-folder").innerText(), /^浏览器项目库/);
     assert.deepEqual(errors, []);
@@ -183,6 +191,7 @@ async function checkDirectoryMirror(browser, address) {
 
     await context.setOffline(false);
     await page.reload();
+    await waitForReady(page);
     await page.waitForFunction((projectId) => [...document.querySelector("#project-menu").options]
       .some((option) => option.value === projectId), pickedProjectId);
     await context.setOffline(true);

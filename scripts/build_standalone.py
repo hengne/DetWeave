@@ -42,6 +42,8 @@ def main():
                 target.write_bytes(urllib.request.urlopen(url, timeout=120).read())
         if hashlib.sha256(target.read_bytes()).hexdigest() != digest:
             raise SystemExit(f'Asset checksum mismatch: {name}')
+    notices = [(ROOT/name).read_text() for name in ('NOTICE','LICENSE')]
+    notices.append('Unmodified Pyodide 0.28.2 source: https://github.com/pyodide/pyodide/tree/0.28.2\nCPython 3.13.2 source: https://github.com/python/cpython/tree/v3.13.2')
     payload = io.BytesIO()
     with zipfile.ZipFile(payload, 'w', zipfile.ZIP_DEFLATED) as archive:
         for file in sorted((ROOT/'detweave').rglob('*')):
@@ -60,12 +62,15 @@ def main():
         for wheel in wheels:
             with zipfile.ZipFile(wheel) as source:
                 for entry in source.infolist():
-                    if not entry.is_dir(): archive.writestr(entry.filename, source.read(entry))
+                    if not entry.is_dir():
+                        archive.writestr(entry.filename, source.read(entry))
+                        if 'license' in entry.filename.lower(): notices.append(entry.filename+'\n'+source.read(entry).decode(errors='replace'))
         for file in CACHE.glob('LICENSE-*.txt'):
             archive.writestr('third-party-licenses/'+file.name, file.read_bytes())
+            notices.append(file.name+'\n'+file.read_text())
     b64 = lambda content:base64.b64encode(content).decode()
     bundle = dict(runtime={name:b64((CACHE/name).read_bytes()) for name in ('pyodide.asm.wasm','python_stdlib.zip')},
-                  lock=json.loads((CACHE/'pyodide-lock.json').read_text()), python=b64(payload.getvalue()))
+                  lock=json.loads((CACHE/'pyodide-lock.json').read_text()), python=b64(payload.getvalue()), notices='\n\n'.join(notices))
     def script(content):
         return '<script>'+content.replace('</script', '<\\/script')+'</script>'
     html=(ROOT/'detweave/web/index.html').read_text()

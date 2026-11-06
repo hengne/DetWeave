@@ -100,8 +100,16 @@ def _registry_folders(files):
 
 def _restore_snapshot(encoded, replace=False):
     files = _decode_snapshot(encoded)
-    folders = _registry_folders(files)
+    folders = [_STORAGE / 'browser', *_registry_folders(files)]
+    for relative in files:
+        project = _project_location(relative)
+        if project and relative == project[1] / 'project.json':
+            folders.extend(_STORAGE / project[1] / name for name in ('prompts', 'runs', 'exports'))
+    if any(folder.relative_to(_STORAGE) in files for folder in folders):
+        raise ValueError('Project archive contains conflicting file and folder paths.')
     if not replace:
+        if any(folder.is_symlink() or (folder.exists() and not folder.is_dir()) for folder in folders):
+            raise ValueError('This archive conflicts with an existing project folder.')
         existing = {}
         for path in _STORAGE.rglob('project.json'):
             relative = path.relative_to(_STORAGE)
@@ -127,7 +135,7 @@ def _restore_snapshot(encoded, replace=False):
         path.parent.mkdir(parents=True, exist_ok=True)
         if not path.exists():
             path.write_bytes(payload)
-    for path in [_STORAGE / 'browser', *folders]:
+    for path in folders:
         path.mkdir(parents=True, exist_ok=True)
 
 

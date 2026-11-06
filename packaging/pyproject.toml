@@ -44,3 +44,4 @@ android_manifest_application_attrs_extra_content = 'android:usesCleartextTraffic
 requires = ["toga-iOS==0.5.7"]
 info.UIFileSharingEnabled = true
 info.LSSupportsOpeningDocumentsInPlace = true
+info.NSAppTransportSecurity.NSAllowsLocalNetworking = true

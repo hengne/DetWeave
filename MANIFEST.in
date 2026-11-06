@@ -1,0 +1,6 @@
+include README.md README.zh-CN.md LICENSE NOTICE CITATION.cff
+recursive-include LICENSES *.txt
+recursive-include detweave *.json *.xml *.html *.js *.css *.txt *.md *.cc *.hh *.cff
+recursive-include standalone *.py *.js *.json *.md
+recursive-include scripts *.py *.cjs
+recursive-include examples *.json *.txt

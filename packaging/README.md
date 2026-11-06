@@ -1,8 +1,8 @@
 # Native packaging / 原生应用封装
 
-This is a separate Briefcase project. It bundles the repository's current `detweave/` Python package and web assets; no external Python installation is needed at runtime. Build from this directory after updating the repository source. Builds are not a substitute for testing each platform, especially mobile file import/export and model networking.
+This Briefcase project packages the repository's Python core and web interface with a Python runtime; users need not install Python. Build from this directory. The published binaries need platform-specific testing; a successful build alone does not establish usability.
 
-这是独立的 Briefcase 打包项目，构建时直接包含仓库中的 `detweave/` 及网页资源，运行时不要求用户另装 Python。请在本目录构建；各平台功能（尤其移动端导入导出和模型网络连接）仍需分别实测。
+此目录为独立的 Briefcase 工程，打包现有 Python 核心、界面及运行时，用户无需另装 Python。各平台构建成功不等于已经完成运行验证。
 
 ```sh
 python3 -m venv .venv
@@ -10,16 +10,24 @@ python3 -m venv .venv
 python -m pip install 'briefcase==0.4.7'
 briefcase create macOS
 briefcase build macOS
-briefcase package macOS --adhoc-sign
+briefcase package macOS --adhoc-sign --no-notarize
 briefcase create iOS
 briefcase build iOS
 briefcase create android
 briefcase build android
+briefcase package android -p debug-apk
+# On Windows:
 briefcase create windows
 briefcase build windows
 briefcase package windows
+# On Ubuntu 24.04 (see CI for system dependencies):
+briefcase create linux system --target ubuntu:noble
+briefcase build linux system --target ubuntu:noble
+briefcase package linux system --target ubuntu:noble --adhoc-sign
 ```
 
-Windows builds require Windows; iOS requires macOS and Xcode. Android builds require Android SDK/JDK and the Android license acceptance. A distributable Android release APK needs a persistent signing key, which must be stored separately and securely; never commit the key. A simulator build is not an iPhone-installable signed IPA. Device installation and App Store distribution require an Apple developer team and appropriate signing. An ad-hoc-signed macOS bundle is intended for local testing and cannot be redistributed as a signed release.
+Windows requires Windows; iOS requires macOS and Xcode; Android requires Android SDK and JDK 17. Android debug APKs are installable test builds signed using the builder's debug key. Their signatures are not a stable release identity, so builds from different machines may not update one another. A release APK needs a persistent signing key; never commit the key. An iOS simulator app is not a signed iPhone IPA; a physical device and App Store distribution require Apple signing credentials. The macOS ad-hoc build is an unnotarized test build, not a Developer ID signed release. It can be shared for evaluation, but Gatekeeper or the operating system may block it and Briefcase warns that ad-hoc signed applications may not run on other machines.
 
-Briefcase's stock mobile WebView does not guarantee blob download or file dialogs. Until verified or a native share bridge is implemented, do not claim mobile import/export support. Each launch uses a fresh local port: browser local storage is not persistent across launches; use the project storage instead.
+Native exports use the application's exports directory on desktop. Android implements the system document picker for exports; its device implementation still requires real-device verification. On iOS projects and exports are stored under the app's Documents folder, with file sharing enabled so that Files can expose them; physical-device verification remains necessary. The native desktop folder picker selects the parent of a project. Mobile project storage currently uses the application document area: selecting arbitrary external folders as live project roots is not implemented; Android exports can be saved through the document picker. Each launch uses a fresh local port, so browser local storage is not persistent across launches; use project storage for persistent work.
+
+Android、Windows 与 Linux CI 的产物是候选构建；签名状态与已完成的运行测试以实际构建记录为准。iOS 物理设备和 Android 真机文件选择、保存仍需实测。

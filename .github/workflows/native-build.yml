@@ -7,6 +7,35 @@ on:
 permissions:
   contents: read
 jobs:
+  ios-simulator:
+    runs-on: macos-15
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: packaging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install briefcase==0.4.7
+      - run: xcodebuild -showsdks
+      - run: briefcase create iOS --no-input
+      - run: briefcase build iOS --no-input
+      - name: Package simulator app and Xcode project
+        run: |
+          set -euo pipefail
+          APP="build/detweave_native/ios/xcode/build/Debug-iphonesimulator/DetWeave.app"
+          test -d "$APP"
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "$APP" dist/DetWeave-iOS-simulator.zip
+          # Include the generated source, resources and Python support dependencies.
+          ditto -c -k --sequesterRsrc --keepParent build/detweave_native/ios/xcode dist/DetWeave-iOS-Xcode-project.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DetWeave-iOS-simulator-and-Xcode-project-unsigned
+          path: packaging/dist/DetWeave-iOS-*.zip
+          if-no-files-found: error
   linux:
     runs-on: ubuntu-24.04
     timeout-minutes: 25

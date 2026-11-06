@@ -177,7 +177,7 @@ async function startDetWeavePortable(bundle) {
           return {error:error.message};
         }
       });
-    } catch(error) { return jsonResponse({error:error.message},507); }
+    } catch(error) { call('release',args); return jsonResponse({error:error.message},507); }
     if(spec.error) { call('release',args); return jsonResponse({error:spec.error},400); }
     const controller = new AbortController();
     const signal = controller.signal;
@@ -195,7 +195,7 @@ async function startDetWeavePortable(bundle) {
             emit({type:'status',stage:'preparing',message:'Browser Python core ready / 浏览器 Python 核心已就绪'});
             if (spec.demo) {
               call('demo', args); signal.throwIfAborted();
-              const result = await transaction('accept', args); call('release', args);
+              const result = await mutation(()=>{ signal.throwIfAborted(); return call('accept',args); }); call('release', args);
               emit({type:'result', result}); return;
             }
             timer = setTimeout(() => {abortCode='total_timeout'; controller.abort();}, spec.total_s*1000);
@@ -239,7 +239,7 @@ async function startDetWeavePortable(bundle) {
             if (!sse) for (const event of call('buffered', {operation_id:operationId,response:JSON.parse(buffer)})) emit(event);
             emit({type:'status',stage:'validating',message:'Validating geometry / 正在校验几何'});
             call('finish', args); signal.throwIfAborted();
-            const result = await transaction('accept', args); call('release', args);
+            const result = await mutation(()=>{ signal.throwIfAborted(); return call('accept',args); }); call('release', args);
             emit({type:'result',result});
           } catch (error) {
             const code = signal.aborted ? abortCode : (error.code || 'extraction_error');
@@ -260,6 +260,7 @@ async function startDetWeavePortable(bundle) {
   window.fetch = async (url, options = {}) => {
     if (!String(url).startsWith('/api/')) return nativeFetch(url, options);
     const path = String(url), data = options.body ? JSON.parse(options.body) : {}, post = options.method === 'POST';
+    if (!post) await pendingSave.catch(()=>{});
     try {
       if (path === '/api/extract/stream') return await extract(data, options);
       let result;
@@ -283,15 +284,17 @@ async function startDetWeavePortable(bundle) {
     } catch (error) { return jsonResponse({error:error.message},400); }
   };
   const bar=document.createElement('div'); bar.className='portable-bar';
-  const text=document.createElement('span'), backup=document.createElement('button'), restore=document.createElement('button'), input=document.createElement('input');
-  backup.className=restore.className='button compact'; input.type='file'; input.accept='.zip'; input.hidden=true;
+  const text=document.createElement('span'), backup=document.createElement('button'), restore=document.createElement('button'), licenses=document.createElement('button'), input=document.createElement('input');
+  backup.className=restore.className=licenses.className='button compact'; input.type='file'; input.accept='.zip'; input.hidden=true;
   function translateBar() {
     text.textContent=label('单文件版 · 数据保存在此浏览器或已授权目录；API 需要联网。', 'Single HTML · Projects use this browser or an authorized folder; APIs need internet.');
+    licenses.textContent=label('许可与署名','Licenses and attribution');
     backup.textContent=label('备份全部项目（ZIP）','Back up all projects (ZIP)'); restore.textContent=label('导入项目库备份','Import library backup');
   }
   translateBar(); window.addEventListener('detweave:language',translateBar);
   new MutationObserver(translateBar).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
-  backup.onclick=() => {
+  backup.onclick=async() => {
+    await pendingSave.catch(()=>{});
     const link=document.createElement('a'), href=URL.createObjectURL(new Blob([decode(call('snapshot'))],{type:'application/zip'}));
     link.href=href; link.download='DetWeave-project-library.zip'; link.click(); setTimeout(()=>URL.revokeObjectURL(href),30000);
   };
@@ -303,7 +306,11 @@ async function startDetWeavePortable(bundle) {
       await transaction('restore',{archive:encode(new Uint8Array(await file.arrayBuffer()))}); location.reload();
     } catch(error) { alert(error.message); } finally { input.value=''; }
   };
-  bar.append(text,backup,restore,input); document.body.prepend(bar);
+  licenses.onclick=()=>{
+    const link=document.createElement('a'), href=URL.createObjectURL(new Blob([bundle.notices],{type:'text/plain;charset=utf-8'}));
+    link.href=href; link.download='DetWeave-licenses-and-attribution.txt'; link.click(); setTimeout(()=>URL.revokeObjectURL(href),30000);
+  };
+  bar.append(text,backup,restore,licenses,input); document.body.prepend(bar);
   notice.remove();
   window.DetWeavePortable={call,persist};
 }
