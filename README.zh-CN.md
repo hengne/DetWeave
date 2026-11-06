@@ -35,7 +35,7 @@ python -m detweave serve
 
 Windows 激活命令为 `.venv\Scripts\activate`。Python 网页版打开 `http://127.0.0.1:8765`，服务仅监听本机。原生应用版内置 Python 运行环境，并使用独立应用窗口。
 
-1. 在左侧下拉列表选择**新建项目**，填写标题并创建本地项目。内置合成示例仍可用于离线体验。
+1. 在左侧下拉列表选择**新建项目**，填写标题、选择保存位置并创建本地项目。内置合成示例仍可用于离线体验。
 2. 输入设计讨论或提示词，选择服务商和模型。真实调用时由用户自行填入 API Key。
 3. 点击提取，**运行过程 / Thinking** 窗口显示服务商实际公开的思考片段、输出、耗时和数据活动，支持取消。
 4. 审阅尺寸、材料、原文依据、冲突和澄清问题。补充后再次提取，每次提交的提示词和调用结果都会保留历史版本。
@@ -69,7 +69,7 @@ Windows 激活命令为 `.venv\Scripts\activate`。Python 网页版打开 `http:
 
 明确创建的项目保存到本地目录。提示词历史包括用户讨论和抽取系统提示词，因此项目目录及导出 ZIP 可能含研究内容。API Key 和原始 thinking 不写入项目记录。选择远程模型会把讨论发送给该服务商；离线演示与本地几何检查不发送外部请求。
 
-独立 HTML 预览可脱离 Python 使用，其用途是查看几何。完整应用需要安装或内置运行环境。仅把 Python 源码文本塞进 HTML，不能让当前 socket／线程后端直接在浏览器执行；不同交付方式见[发行形态说明](docs/DISTRIBUTION.md)。
+完整单文件 HTML 内含 Python 运行环境，可离线建模，项目保存到浏览器授权文件夹或浏览器项目库。远程模型需要联网及服务商跨域许可。另外可从当前几何导出更小的独立 HTML 查看器。不同交付方式见[发行形态说明](docs/DISTRIBUTION.md)。
 
 ## 许可与引用
 
@@ -100,3 +100,7 @@ python -m detweave export examples/sampling.json --output local/sampling.zip
 - [参与贡献](CONTRIBUTING.md)
 
 DetWeave 是独立软件，不是 CERN、Geant4、DD4hep 或模型服务商的官方产品。
+
+### 单文件 HTML 与项目保存位置
+
+发行版包含 `DetWeave-0.2.0.html`：双击运行，内嵌 Python/WASM、几何校验与导出，不需要安装 Python 或启动服务。新建项目必须选择保存位置；桌面版使用系统目录选择框，手机端遵循系统文档权限。HTML 版支持浏览器授权文件夹，或选择明确标注的浏览器项目库并导出完整 ZIP 备份。远程模型调用需要联网，并受服务商 CORS 限制。详见[单文件说明](standalone/README.md)和[发行形态](docs/DISTRIBUTION.md)。

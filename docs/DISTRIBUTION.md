@@ -10,7 +10,9 @@ DetWeave 共用 Python 几何核心与 HTML/JavaScript 界面。原生封装包�
 | Format / 形式 | Meaning / 含义 |
 |---|---|
 | Python wheel / source archive | Installable Python application; requires a suitable Python environment / 需要 Python 环境 |
-| Standalone HTML preview | Offline geometry viewer generated from a model; not the complete extraction backend / 离线几何查看器 |
+| Single-file HTML application | Embedded Python/WASM; offline validation, projects, exports; direct model calls subject to browser CORS / 内嵌 Python 的完整单文件工作台 |
+| Standalone geometry HTML preview | Small offline viewer exported from a model / 从模型导出的小型离线查看器 |
+| Linux desktop package | Linux native build; package/architecture listed in release notes / Linux 原生包，格式与架构见发行说明 |
 | macOS app / DMG | Bundled desktop application; signing/notarization status must be stated in release notes / 发行说明标明签名与公证情况 |
 | Windows MSI | Bundled desktop installer built on Windows / 在 Windows 上构建的安装程序 |
 | Android APK | Android application; signing and device-tested features must be recorded / 标明签名与真机测试范围 |
@@ -20,18 +22,18 @@ DetWeave 共用 Python 几何核心与 HTML/JavaScript 界面。原生封装包�
 
 ## Can all Python go inside one HTML file? / Python 能全部放进单文件 HTML 吗？
 
-Source text can be embedded, but executing it requires a runtime. Pyodide can
-run Python via WebAssembly in a browser, but ordinary sockets and the existing
-HTTP server/threading architecture cannot simply be reused. Browser fetch is
-subject to CORS, including when calling model providers. A truly offline,
-single-file Python browser build would need embedded runtime/dependency assets
-and a separate networking/filesystem adaptation, with browser-specific tests.
-It is a distinct engineering target, not concatenation of the current files.
+The complete single-file application is now built by
+`python scripts/build_standalone.py`. It embeds CPython through Pyodide,
+its standard library, dependencies, the Python geometry core and the interface
+in one HTML file (about 16.5 MB). Open it directly; offline work needs no CDN or
+local HTTP service. Browser fetch replaces ordinary sockets; IndexedDB and
+optional authorized directory handles replace native filesystem access.
+Remote model APIs still require internet and provider CORS permission.
+See [the standalone guide](../standalone/README.md) for storage and backup details.
 
-源码可以嵌入 HTML，但执行仍需要运行时。Pyodide 可通过 WebAssembly 在浏览器执行 Python，
-不过当前普通 socket、HTTP 服务及线程架构不能原样搬入，模型请求还受浏览器跨域规则限制。
-真正离线的单文件还需嵌入解释器和依赖，并适配网络、文件存储，逐浏览器验证。
-因此本轮优先采用包含 Python 的应用安装包，同时保留独立几何 HTML 预览。
+完整单文件版现由上述脚本构建，约 16.5 MB，内含 Python/WASM 解释器、依赖、几何核心与界面。
+可直接双击，离线使用无需 CDN 或本地服务；浏览器负责模型网络调用、项目库和授权文件夹存储。
+远程模型仍需联网且服务商允许跨域请求。它与从某个几何导出的小型 HTML 查看器是两种交付文件。
 
 Sources: [Pyodide networking](https://pyodide.org/en/stable/usage/api/python-api/http.html),
 [Briefcase](https://briefcase.readthedocs.io/en/stable/),

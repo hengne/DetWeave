@@ -23,7 +23,7 @@
       </a>
       <div class="masthead-tools">
         <span class="local-indicator"><i></i> 本地工作台</span>
-        <a class="quiet header-schema" href="/api/schema" target="_blank" rel="noopener">IR Schema <span aria-hidden="true">↗</span></a>
+        <a class="quiet header-schema" id="schema-link" href="/api/schema" target="_blank" rel="noopener">IR Schema <span aria-hidden="true">↗</span></a>
         <label class="sr-only" for="language">界面语言</label>
         <select id="language" class="language-select" autocomplete="off"><option value="zh-CN">中文</option><option value="en">English</option></select>
         <button type="button" class="button compact" id="import">导入项目</button>
@@ -59,14 +59,14 @@
         <button type="button" class="button compact" id="project-save" hidden>保存本地项目</button>
         <p id="project-message" class="fine-print" role="status" aria-live="polite">创建项目后，讨论版本与提取记录保存到本机目录。</p>
       </div>
+      <div id="active-project-location" class="project-location project-location-bar" hidden>
+        <div><span class="muted" id="project-folder-label">本机目录</span><code id="project-folder"></code></div>
+        <button type="button" class="button compact" id="project-copy-path">复制路径</button>
+      </div>
       <details id="project-history" class="project-history" hidden>
         <summary><span>提示词与运行记录</span> <span id="project-history-count" class="mono"></span></summary>
         <div class="project-history-body">
-          <div class="project-location">
-            <div><span class="muted">本机目录</span><code id="project-folder"></code></div>
-            <button type="button" class="button compact" id="project-copy-path">复制路径</button>
-            <button type="button" class="button compact" id="project-refresh">刷新记录</button>
-          </div>
+          <button type="button" class="button compact project-refresh" id="project-refresh">刷新记录</button>
           <div class="project-history-grid">
             <section><h3>讨论版本</h3><div id="project-prompts"></div></section>
             <section><h3>提取与导出记录</h3><div id="project-runs"></div></section>
@@ -261,7 +261,25 @@
     <form id="project-create-form" class="about-body">
       <label for="project-create-name">项目标题</label>
       <input id="project-create-name" type="text" maxlength="100" autocomplete="off" required>
-      <p class="fine-print">创建一个本机目录，用于保存讨论、几何和提取记录。</p>
+      <div class="project-create-location">
+        <label for="project-create-location">创建位置</label>
+        <div class="project-location-controls">
+          <select id="project-create-location" aria-describedby="project-create-location-help" required>
+            <option value="">选择创建位置…</option>
+          </select>
+          <button type="button" class="button compact" id="project-location-browse" hidden>选择文件夹…</button>
+        </div>
+        <code id="project-create-location-path" hidden></code>
+        <p id="project-create-location-help" class="fine-print">将在所选父目录中创建项目子目录。创建后可查看实际路径。</p>
+        <details id="project-location-register" hidden>
+          <summary>输入现有文件夹路径</summary>
+          <label for="project-location-path-input" class="sr-only">现有文件夹的绝对路径</label>
+          <div class="project-location-controls">
+            <input id="project-location-path-input" type="text" maxlength="4096" autocomplete="off" placeholder="现有文件夹的绝对路径">
+            <button type="button" class="button compact" id="project-location-register-button">使用此文件夹</button>
+          </div>
+        </details>
+      </div>
       <p id="project-create-error" class="fine-print error" role="status"></p>
       <div class="dialog-actions">
         <button type="button" class="button compact" id="project-create-cancel">取消</button>

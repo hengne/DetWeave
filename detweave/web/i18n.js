@@ -267,8 +267,8 @@ IR 已应用，仍有待核查项。	IR applied. Some items still need review.
 请填写该问题的答复。	Enter an answer to this question.
 请先处理已修改的原文。	Apply or extract the changed source text first.
 补充答复	Clarification
-问题：	Question: 
-答复：	Answer: 
+问题：	Question:
+答复：	Answer:
 记录此答复并移出待澄清项？后续需要应用 IR 修改或重新提取。	Record the answer and remove this question? You will still need to apply IR changes or extract again.
 记录已取消。	Recording canceled.
 已补充答复，请将答复应用到此参数并复核。	A clarification was added. Apply it to this parameter and review the evidence.
@@ -367,6 +367,38 @@ IR 已应用，仍有待核查项。	IR applied. Some items still need review.
 此运行没有可载入的几何。	This run has no geometry to load.
 已载入历史几何。可保存为当前项目草稿。	Historical geometry loaded. You can save it as the current project draft.
 原生保存失败，正在尝试浏览器下载。	Native save failed. Trying a browser download.
+原生保存失败。	Native save failed.
+已取消保存。	Save canceled.
+创建位置	Create in
+选择创建位置…	Choose a project location…
+选择文件夹…	Choose folder…
+默认位置	Default location
+不可用	Unavailable
+上次使用	Last used
+存储位置	Storage location
+应用文档目录	App documents folder
+将在所选父目录中创建项目子目录。创建后可查看实际路径。	A project subfolder will be created in the selected parent folder. Its actual path appears after creation.
+项目保存在应用的私有文档目录。可以从项目中单独导出文件。	Projects are stored in the app's private documents folder. You can export individual files from the project.
+项目保存在所选的浏览器存储位置。可另行导出项目文件。	Projects are stored in the selected browser storage location. You can also export project files.
+创建项目后，讨论版本与提取记录将保存在所选浏览器存储位置。	Create a project to keep discussion versions and extraction records in the selected browser storage location.
+创建项目后，讨论版本与提取记录保存到应用的私有文档目录。	Create a project to keep discussion versions and extraction records in the app's private documents folder.
+正在准备 IR Schema…	Preparing the IR schema…
+IR Schema 已下载。	IR schema downloaded.
+输入现有文件夹路径	Enter an existing folder path
+现有文件夹的绝对路径	Absolute path of an existing folder
+使用此文件夹	Use this folder
+本地服务未返回项目位置。	The local service did not return project locations.
+本地服务未返回有效的文件夹。	The local service did not return a valid folder.
+正在打开文件夹选择器…	Opening folder chooser…
+正在检查文件夹…	Checking the folder…
+请输入现有文件夹的绝对路径。	Enter the absolute path of an existing folder.
+请选择创建位置。	Choose where to create the project.
+浏览器项目库（请定期导出备份）	Browser project library (export backups regularly)
+准备浏览器运行环境	Preparing browser runtime
+正在准备本次浏览器提取。	Preparing extraction in the browser.
+浏览器内嵌运行环境不可用。请重新打开单文件 DetWeave。	The embedded browser runtime is unavailable. Reopen the standalone DetWeave HTML file.
+浏览器内嵌提取环境不可用。请重新打开单文件 DetWeave。	The embedded extraction runtime is unavailable. Reopen the standalone DetWeave HTML file.
+此单文件版本缺少提取接口。请打开新版 DetWeave HTML。	This standalone file does not contain the extraction interface. Open the current DetWeave HTML file.
 暂无事件。	No events yet.
 `.trim().split("\n").map((line) => line.split("\t")));
   let language = "zh-CN";
@@ -377,6 +409,7 @@ IR 已应用，仍有待核查项。	IR applied. Some items still need review.
     if (english.has(message)) return english.get(message);
     const formatted = [
       [/^本地服务返回 HTTP (\d+)$/, (_, code) => "Local service returned HTTP " + code],
+      [/^浏览器运行环境返回 HTTP (\d+)$/, (_, code) => "Browser runtime returned HTTP " + code],
       [/^服务商 HTTP (\d+)，1 秒后重试一次。$/, (_, code) => "Provider HTTP " + code + ". The server will retry once after 1 second."],
       [/^达到总耗时上限（([\d.]+) 秒）。部分输出未作为几何接受；可调整总时限或思考模式后重试。$/, (_, seconds) => "Total timeout of " + seconds + " seconds reached. Partial output was discarded. You can adjust the timeout or thinking setting before retrying."],
       [/^服务商连续 ([\d.]+) 秒未返回新数据，连接已结束；已收到的部分输出未被接受。$/, (_, seconds) => "No provider data arrived for " + seconds + " seconds. The connection was closed and partial output discarded."],

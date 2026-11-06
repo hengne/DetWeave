@@ -11,6 +11,7 @@ const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
 const sourceInput = $("source-text");
 const jsonInput = $("model-json");
 const saveKey = "detweave.project.v1";
+const lastProjectLocationKey = "detweave.projectLocation";
 const providerCatalog = window.DETWEAVE_PROVIDERS || [];
 const protocolLabels = {
   openai: "OpenAI / 兼容接口",
@@ -22,14 +23,15 @@ const currentPreset = () => providerCatalog.find((preset) => preset.id === $("pr
 const state = {
   model: null, report: null, provenance: null, reviewPending: false,
   view: "3d", selection: null, busy: false, examples: [], jsonCommitted: "",
-  project: null, projects: [],
+  project: null, projects: [], projectLocations: null,
 };
 const history = [];
 let activeExtraction = null;
 const streamTextLimit = 200_000;
 const streamLineLimit = 12_000_000;
 const runStages = {
-  connecting_local: "连接本地服务", starting: "请求已接收", received: "请求已接收", queued: "排队等待",
+  connecting_local: "连接本地服务", browser_runtime: "准备浏览器运行环境",
+  starting: "请求已接收", received: "请求已接收", queued: "排队等待",
   preparing: "准备提取", connecting: "连接服务商", connecting_provider: "连接服务商",
   waiting_provider: "等待服务商数据", provider_event: "收到服务商数据",
   buffered_response: "等待整段响应", parsing: "解析几何 JSON",
@@ -78,7 +80,9 @@ async function api(path, data, binary = false) {
   try {
     response = await fetch(path, options);
   } catch {
-    throw new Error("无法连接本地服务，请检查 DetWeave 是否仍在运行。");
+    throw new Error(projectLocationMode() === "browser"
+      ? "浏览器内嵌运行环境不可用。请重新打开单文件 DetWeave。"
+      : "无法连接本地服务，请检查 DetWeave 是否仍在运行。");
   }
   if (response.ok) return binary ? response.blob() : response.json();
   throw await responseError(response);
@@ -87,7 +91,8 @@ async function api(path, data, binary = false) {
 async function responseError(response) {
   const result = await response.json().catch(() => null);
   const message = result?.error?.message || result?.error || result?.message || result?.detail;
-  return new Error(typeof message === "string" ? message : "本地服务返回 HTTP " + response.status);
+  const fallback = projectLocationMode() === "browser" ? "浏览器运行环境返回 HTTP " : "本地服务返回 HTTP ";
+  return new Error(typeof message === "string" ? message : fallback + response.status);
 }
 
 function updateControls() {
@@ -105,9 +110,11 @@ function updateControls() {
   };
   for (const [id, inactive] of Object.entries(disabled)) $(id).disabled = state.busy || inactive;
   for (const id of ["import", "provider", "base-url", "model-name", "ark-model-select", "api-key", "ark-thinking", "total-timeout",
-    "project-menu", "project-title-input", "project-save", "project-refresh", "project-create-submit", "project-create-cancel"]) {
+    "project-menu", "project-title-input", "project-save", "project-refresh", "project-create-cancel",
+    "project-create-location", "project-location-browse", "project-location-path-input", "project-location-register-button"]) {
     $(id).disabled = state.busy;
   }
+  $("project-create-submit").disabled = state.busy || !selectedProjectLocation();
   sourceInput.readOnly = state.busy;
   jsonInput.readOnly = state.busy;
   $("dirty-label").textContent = dirty ? t("有尚未应用的原文修改") : "";
@@ -448,7 +455,9 @@ function beginExtraction(demo) {
   $("run-log").replaceChildren();
   $("run-log-truncated").hidden = true;
   $("run-cancel").disabled = false;
-  setRunStage("connecting_local", "active", "正在等待本地服务接收请求。");
+  const portable = projectLocationMode() === "browser";
+  setRunStage(portable ? "browser_runtime" : "connecting_local", "active",
+    portable ? "正在准备本次浏览器提取。" : "正在等待本地服务接收请求。");
   logRunEvent(operation, "发起提取请求。");
   activeExtraction = operation;
   updateRunClock(operation);
@@ -537,9 +546,13 @@ async function streamExtraction(text, provider, operation) {
     });
   } catch (error) {
     if (signal.aborted) throw error;
-    throw new Error("无法连接本地流式服务，请检查 DetWeave 是否仍在运行。");
+    throw new Error(projectLocationMode() === "browser"
+      ? "浏览器内嵌提取环境不可用。请重新打开单文件 DetWeave。"
+      : "无法连接本地流式服务，请检查 DetWeave 是否仍在运行。");
   }
-  if (response.status === 404) throw new Error("本地服务没有流式提取接口。请重启新版 DetWeave。");
+  if (response.status === 404) throw new Error(projectLocationMode() === "browser"
+    ? "此单文件版本缺少提取接口。请打开新版 DetWeave HTML。"
+    : "本地服务没有流式提取接口。请重启新版 DetWeave。");
   if (!response.ok) throw await responseError(response);
   if (!response.body || !response.headers.get("Content-Type")?.toLowerCase().startsWith("application/x-ndjson")) {
     throw new Error("本地服务未返回 NDJSON 流式响应。");
@@ -879,6 +892,7 @@ function renderDrawing() {
   $("view-empty").querySelector("p").textContent = state.model
     ? t("没有可预览的放置，请查看验证结果。") : t("加载示例或提取草稿，开始查看几何");
   $("view-mode").textContent = in3D ? "3D / ORTHOGRAPHIC" : view.toUpperCase() + " / PROJECTION";
+  $("view-mode").dataset.view = view;
   $("view-help").textContent = t(in3D ? "拖动旋转 · 滚动缩放" : "选中对象 · 查看尺寸");
   $("drawing").innerHTML = in3D ? "" : drawingSVG(view, true);
   $("svg-export").title = t("下载") + " " + (in3D ? "XZ" : view.toUpperCase()) + " " + t("投影");
@@ -1131,9 +1145,16 @@ async function download(content, type, filename) {
   const blob = content instanceof Blob ? content : new Blob([content], { type });
   if (typeof window.DetWeaveNativeSave === "function") {
     try {
-      if (await window.DetWeaveNativeSave(blob, filename)) return;
+      const result = await window.DetWeaveNativeSave(blob, filename);
+      if (result === true || result?.saved) return true;
+      if (result?.cancelled) {
+        notify("已取消保存。");
+        return false;
+      }
+      throw new Error("原生保存失败。");
     } catch {
-      notify("原生保存失败，正在尝试浏览器下载。", "error");
+      notify("原生保存失败。", "error");
+      return false;
     }
   }
   const link = document.createElement("a");
@@ -1144,6 +1165,7 @@ async function download(content, type, filename) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
 }
 
 function exportPreview() {
@@ -1181,6 +1203,129 @@ function projectDocument() {
 }
 
 const projectURL = (id) => "/api/projects/" + encodeURIComponent(id);
+const projectLocationsURL = "/api/projects/locations";
+
+function projectLocationMode() {
+  const configured = state.projectLocations?.mode || state.projectLocations?.capabilities?.mode
+    || window.DetWeaveProjectStorageMode;
+  if (configured && configured !== "desktop") return configured;
+  const mobileWebView = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (mobileWebView && typeof window.DetWeaveNativeSave === "function") return "app-private";
+  if (window.DetWeavePortable || window.location.protocol === "file:") return "browser";
+  return "desktop";
+}
+
+function projectPathDisplay(value) {
+  if (projectLocationMode() !== "browser") return value;
+  const library = "浏览器项目库（请定期导出备份）";
+  const other = "Browser project library (export backups regularly)";
+  const prefix = value.startsWith(library) ? library : value.startsWith(other) ? other : "";
+  return prefix ? t(library) + value.slice(prefix.length) : value;
+}
+
+function projectStorageMessage() {
+  const mode = projectLocationMode();
+  if (mode === "browser") return "创建项目后，讨论版本与提取记录将保存在所选浏览器存储位置。";
+  if (mode === "app-private" || mode === "mobile") return "创建项目后，讨论版本与提取记录保存到应用的私有文档目录。";
+  return "创建项目后，讨论版本与提取记录保存到本机目录。";
+}
+
+function selectedProjectLocation() {
+  const id = $("project-create-location").value;
+  return state.projectLocations?.locations.find((location) => location.id === id && location.available !== false);
+}
+
+function recentProjectLocation() {
+  try {
+    return localStorage.getItem(lastProjectLocationKey) || state.projectLocations?.recent_id;
+  } catch {
+    return state.projectLocations?.recent_id;
+  }
+}
+
+function rememberProjectLocation(id) {
+  try { localStorage.setItem(lastProjectLocationKey, id); } catch { /* Browser storage is optional. */ }
+}
+
+function renderProjectLocationMenu(selected = $("project-create-location").value) {
+  const menu = $("project-create-location");
+  const info = state.projectLocations;
+  const recent = recentProjectLocation();
+  const mode = projectLocationMode();
+  menu.replaceChildren(new Option(t("选择创建位置…"), ""));
+  const locations = [...(info?.locations || [])];
+  const priority = (location) => location.id === recent ? 0 : location.id === info?.default_id ? 1 : 2;
+  locations.sort((a, b) => priority(a) - priority(b));
+  for (const location of locations) {
+    const label = location.id === recent ? t("上次使用") : location.id === info?.default_id ? t("默认位置") : "";
+    const value = projectPathDisplay(location.display_path || location.path || location.label || "");
+    const option = new Option([label, value, location.available === false && t("不可用")].filter(Boolean).join(" · "), location.id);
+    option.disabled = location.available === false;
+    menu.add(option);
+  }
+  menu.value = locations.some((location) => location.id === selected && location.available !== false) ? selected : "";
+  const capabilities = info?.capabilities || {};
+  $("project-location-browse").hidden = typeof window.DetWeaveSelectProjectFolder !== "function"
+    && !(mode === "desktop" && (info?.system_picker || capabilities.system_picker));
+  $("project-location-register").hidden = !info
+    || mode !== "desktop" || !(info.register_path ?? capabilities.register_path ?? true);
+  $("project-create-location-help").textContent = t(mode === "app-private" || mode === "mobile"
+    ? "项目保存在应用的私有文档目录。可以从项目中单独导出文件。"
+    : mode === "browser" ? "项目保存在所选的浏览器存储位置。可另行导出项目文件。"
+      : "将在所选父目录中创建项目子目录。创建后可查看实际路径。");
+  showSelectedProjectLocation();
+}
+
+function showSelectedProjectLocation() {
+  const location = selectedProjectLocation();
+  const path = $("project-create-location-path");
+  path.hidden = !location;
+  path.textContent = location ? projectPathDisplay(location.display_path || location.path || location.label || "") : "";
+  updateControls();
+}
+
+let projectLocationRequest = 0;
+async function refreshProjectLocations() {
+  const request = ++projectLocationRequest;
+  const result = await api(projectLocationsURL);
+  if (request !== projectLocationRequest) return;
+  if (!Array.isArray(result.locations)) throw new Error("本地服务未返回项目位置。");
+  const previousMessage = projectStorageMessage();
+  state.projectLocations = result;
+  renderProjectLocationMenu();
+  if (state.project) renderProjectFolder();
+  else if ($("project-message").dataset.message === previousMessage) setProjectMessage(projectStorageMessage());
+}
+
+function acceptProjectLocation(location) {
+  if (!location || typeof location.id !== "string") throw new Error("本地服务未返回有效的文件夹。");
+  projectLocationRequest++;
+  if (!state.projectLocations) state.projectLocations = { locations: [] };
+  const entries = state.projectLocations.locations;
+  const index = entries.findIndex((item) => item.id === location.id);
+  if (index >= 0) entries[index] = location;
+  else entries.push(location);
+  renderProjectLocationMenu(location.id);
+}
+
+function projectLocationAction(label, work) {
+  return run(label, async () => {
+    $("project-create-error").textContent = "";
+    try { await work(); } catch (error) {
+      $("project-create-error").textContent = t(error.message);
+      throw error;
+    }
+  });
+}
+
+function renderProjectFolder() {
+  const mode = projectLocationMode();
+  $("project-folder-label").textContent = t(mode === "browser" ? "存储位置"
+    : mode === "app-private" || mode === "mobile" ? "应用文档目录" : "本机目录");
+  $("project-folder").textContent = projectPathDisplay(state.project?.folder_display || state.project?.folder || "");
+  $("project-copy-path").hidden = mode === "browser";
+}
 
 function setProjectMessage(message) {
   $("project-message").dataset.message = message;
@@ -1201,7 +1346,7 @@ function projectTime(value) {
 
 function renderProjectHistory() {
   const project = state.project;
-  for (const id of ["active-project-title", "project-save", "project-history"]) $(id).hidden = !project;
+  for (const id of ["active-project-title", "active-project-location", "project-save", "project-history"]) $(id).hidden = !project;
   if (!project) return;
   const prompts = project.prompts || [];
   const runs = project.runs || [];
@@ -1209,7 +1354,7 @@ function renderProjectHistory() {
   const versions = new Map(prompts.map((prompt, index) => [prompt.id, index + 1]));
   $("project-history-count").textContent = countText(prompts.length, "个版本", "版本数") + " · "
     + countText(runs.length, "次运行", "运行数");
-  $("project-folder").textContent = project.folder;
+  renderProjectFolder();
   $("project-prompts").innerHTML = [...prompts].reverse().map((prompt) =>
     '<details class="project-entry"><summary>' + esc(t("版本")) + ' ' + versions.get(prompt.id) + ' · '
       + esc(projectTime(prompt.created_at)) + '</summary><pre tabindex="0">' + esc(prompt.text) + '</pre>'
@@ -1300,7 +1445,7 @@ async function activateLocalProject(project) {
   } else {
     renderProjectMenu();
     renderProjectHistory();
-    setProjectMessage("创建项目后，讨论版本与提取记录保存到本机目录。");
+    setProjectMessage(projectStorageMessage());
   }
   render();
 }
@@ -1405,7 +1550,7 @@ async function answerQuestion(index, action) {
   const answer = $("answer-" + index).value.trim();
   if (!answer) throw new Error("请填写该问题的答复。");
   if (action === "record" && isDirty()) throw new Error("请先处理已修改的原文。");
-  const line = t("补充答复") + " [" + question.id + "]\n" + t("问题：") + question.question + "\n" + t("答复：") + answer;
+  const line = t("补充答复") + " [" + question.id + "]\n" + t("问题：") + " " + question.question + "\n" + t("答复：") + " " + answer;
   const text = appendSource(sourceInput.value, line);
   if (action === "extract") {
     remember();
@@ -1441,10 +1586,26 @@ async function loadExample(example, saveUndo = true) {
 }
 
 async function initialize() {
+  if (projectLocationMode() === "browser") {
+    document.querySelector(".identity").setAttribute("href", "#main-title");
+    $("schema-link").setAttribute("href", "#main-title");
+    $("schema-link").removeAttribute("target");
+    $("schema-link").addEventListener("click", (event) => {
+      event.preventDefault();
+      run("正在准备 IR Schema…", async () => {
+        const schema = await api("/api/schema");
+        if (await download(JSON.stringify(schema, null, 2), "application/schema+json", "detweave-schema.json")) {
+          notify("IR Schema 已下载。", "success");
+        }
+      });
+    });
+  }
   renderProviderMenu();
   setProvider(true);
   renderProjectMenu();
+  setProjectMessage(projectStorageMessage());
   refreshProjectIndex().catch(() => setProjectMessage("未能读取本地项目列表。"));
+  refreshProjectLocations().catch(() => { /* The create dialog retries and reports errors. */ });
   refreshLocalSave();
   render();
   await run("正在加载内置示例…", async () => {
@@ -1473,6 +1634,7 @@ $("language").addEventListener("change", () => {
   renderProviderMenu();
   setProvider();
   renderProjectMenu();
+  renderProjectLocationMenu();
   renderProjectHistory();
   refreshLocalSave();
   render();
@@ -1493,14 +1655,42 @@ $("project-menu").addEventListener("change", (event) => {
   if (selected === "__new__") {
     $("project-create-name").value = "";
     $("project-create-error").textContent = "";
+    $("project-location-path-input").value = "";
+    $("project-location-register").open = false;
+    renderProjectLocationMenu("");
     $("project-create-dialog").showModal();
     $("project-create-name").focus();
+    refreshProjectLocations().catch((error) => {
+      if ($("project-create-dialog").open) $("project-create-error").textContent = t(error.message);
+    });
     return;
   }
   projectAction("正在打开本地项目…", async () => activateLocalProject(selected ? await api(projectURL(selected)) : null));
 });
 $("project-create-cancel").addEventListener("click", () => $("project-create-dialog").close());
 $("project-create-dialog").addEventListener("cancel", (event) => { if (state.busy) event.preventDefault(); });
+$("project-create-location").addEventListener("change", showSelectedProjectLocation);
+$("project-location-browse").addEventListener("click", () => projectLocationAction("正在打开文件夹选择器…", async () => {
+  const location = typeof window.DetWeaveSelectProjectFolder === "function"
+    ? await window.DetWeaveSelectProjectFolder()
+    : await api(projectLocationsURL + "/pick", {});
+  if (location && !location.cancelled) {
+    acceptProjectLocation(location);
+    if (projectLocationMode() === "browser") await refreshProjectIndex();
+  }
+}));
+$("project-location-register-button").addEventListener("click", () => projectLocationAction("正在检查文件夹…", async () => {
+  const path = $("project-location-path-input").value.trim();
+  if (!path) throw new Error("请输入现有文件夹的绝对路径。");
+  acceptProjectLocation(await api(projectLocationsURL, { path }));
+  $("project-location-path-input").value = "";
+  $("project-location-register").open = false;
+}));
+$("project-location-path-input").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  $("project-location-register-button").click();
+});
 $("project-create-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const title = $("project-create-name").value.trim();
@@ -1508,9 +1698,15 @@ $("project-create-form").addEventListener("submit", (event) => {
     $("project-create-error").textContent = t("请输入项目标题。");
     return;
   }
+  const location = selectedProjectLocation();
+  if (!location) {
+    $("project-create-error").textContent = t("请选择创建位置。");
+    return;
+  }
   projectAction("正在创建本地项目…", async () => {
     try {
-      const project = await api("/api/projects", { title });
+      const project = await api("/api/projects", { title, location_id: location.id });
+      rememberProjectLocation(location.id);
       await activateLocalProject(project);
       $("project-create-dialog").close();
       setProjectMessage("已创建本地项目。");
@@ -1697,9 +1893,9 @@ $("import-file").addEventListener("change", (event) => {
 $("export").addEventListener("click", () => run("正在生成几何包…", async () => {
   const projectId = state.project?.id;
   const blob = await api("/api/export", { model: state.model, provenance: publicProvenance(state.provenance), project_id: projectId }, true);
-  await download(blob, "application/zip", "detweave-geometry.zip");
+  const saved = await download(blob, "application/zip", "detweave-geometry.zip");
   if (projectId) refreshProjectAfterRun(projectId);
-  notify("几何包已下载。", "success");
+  if (saved) notify("几何包已下载。", "success");
 }));
 
 initialize();

@@ -32,7 +32,7 @@ _ERROR_CODES = {
     "cancelled", "configuration", "connect_timeout", "idle_timeout", "total_timeout",
     "provider_http", "provider_stream_error", "network_error", "completion_rejected",
     "incomplete_response", "protocol_error", "response_limit", "extraction_error",
-    "project_storage_error", "unsafe_output", "schema",
+    "project_storage_error", "unsafe_output", "schema", "local_busy",
 }
 
 
@@ -197,9 +197,92 @@ class ProjectStore:
         self.root = (Path(configured).expanduser() if configured else
                      Path.home() / "Documents" / "DetWeave" / "projects").resolve()
 
+    def _locations(self):
+        locations = [dict(id="default", path=str(self.root), label="DetWeave")]
+        try:
+            registered = _read(self.root / ".locations.json")
+        except FileNotFoundError:
+            return locations
+        if not isinstance(registered, list):
+            raise ProjectStorageError("Invalid project location registry.")
+        seen_ids = {"default"}
+        seen_paths = {self.root}
+        for item in registered:
+            if (not isinstance(item, dict) or not isinstance(item.get("id"), str)
+                    or not _ID.fullmatch(item["id"]) or item["id"] in seen_ids
+                    or not isinstance(item.get("path"), str) or not isinstance(item.get("label"), str)):
+                raise ProjectStorageError("Invalid project location registry.")
+            path = Path(item["path"])
+            if not path.is_absolute() or path in seen_paths:
+                raise ProjectStorageError("Invalid project location registry.")
+            seen_ids.add(item["id"])
+            seen_paths.add(path)
+            locations.append({key: item[key] for key in ("id", "path", "label")})
+        return locations
+
+    @staticmethod
+    def _available(path):
+        try:
+            return path.is_dir() and path.resolve(strict=True) == path and os.access(path, os.R_OK | os.X_OK)
+        except OSError:
+            return False
+
+    def locations(self):
+        with _LOCK:
+            return [{**item, "available": item["id"] == "default" or self._available(Path(item["path"]))}
+                    for item in self._locations()]
+
+    def register_location(self, path, *, label=None):
+        path = Path(_text(os.fspath(path), 4096)).expanduser()
+        if not path.is_absolute():
+            raise ValueError("Choose an absolute path on the machine running DetWeave.")
+        try:
+            path = path.resolve(strict=True)
+        except (FileNotFoundError, NotADirectoryError, RuntimeError) as exc:
+            raise ValueError("The selected local folder does not exist.") from exc
+        if not path.is_dir():
+            raise ValueError("The selected location must be a folder.")
+        if not self._available(path):
+            raise ProjectStorageError("The selected local folder cannot be accessed.")
+        label = _title(label) if label is not None else path.name or str(path)
+        with _LOCK:
+            locations = self._locations()
+            for location in locations:
+                registered = Path(location["path"])
+                same_directory = registered == path
+                if not same_directory and self._available(registered):
+                    try:
+                        same_directory = registered.samefile(path)
+                    except OSError:
+                        pass
+                if same_directory:
+                    return {**location, "available": True}
+            location = dict(id=uuid4().hex, path=str(path), label=label)
+            self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+            _write(self.root / ".locations.json", _json_bytes([*locations[1:], location]))
+            return {**location, "available": True}
+
+    def _location_path(self, location_id):
+        if location_id is None or location_id == "default":
+            self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+            return self.root
+        _id(location_id)
+        for location in self._locations():
+            if location["id"] == location_id:
+                path = Path(location["path"])
+                if not self._available(path):
+                    raise ProjectStorageError("The selected local folder is currently unavailable.")
+                return path
+        raise ProjectNotFound("Local project location not found.")
+
     def _path(self, project_id):
         _id(project_id)
-        paths = list(self.root.glob("* -- " + project_id))
+        paths = []
+        for location in self._locations():
+            root = Path(location["path"])
+            if self._available(root):
+                paths.extend(path for path in root.glob("* -- " + project_id)
+                             if path.is_symlink() or (path / "project.json").is_file())
         if not paths:
             raise ProjectNotFound("Local project not found.")
         if len(paths) != 1:
@@ -213,22 +296,25 @@ class ProjectStore:
         return doc
 
     @staticmethod
-    def _summary(path, doc):
-        return {**{key: doc[key] for key in ("id", "title", "created_at", "updated_at")}, "folder": str(path)}
+    def _summary(path, doc, location_id):
+        return {**{key: doc[key] for key in ("id", "title", "created_at", "updated_at")},
+                "folder": str(path), "location_id": location_id}
 
     def list(self):
         with _LOCK:
-            if not self.root.exists():
-                return []
             projects = []
-            for path in self.root.iterdir():
-                if path.name.startswith(".saving-") or not _ID.fullmatch(path.name.rsplit(" -- ", 1)[-1]):
+            for location in self._locations():
+                root = Path(location["path"])
+                if not self._available(root):
                     continue
-                if " -- " in path.name and path.is_dir() and not path.is_symlink():
-                    projects.append(self._summary(path, self._document(path)))
+                for path in root.iterdir():
+                    if path.name.startswith(".saving-") or not _ID.fullmatch(path.name.rsplit(" -- ", 1)[-1]):
+                        continue
+                    if " -- " in path.name and not path.is_symlink() and (path / "project.json").is_file():
+                        projects.append(self._summary(path, self._document(path), location["id"]))
             return sorted(projects, key=lambda item: item["updated_at"], reverse=True)
 
-    def create(self, title, draft=None):
+    def create(self, title, draft=None, location_id=None):
         title = _title(title)
         initial_draft = _draft(draft if draft is not None else {})
         project_id = uuid4().hex
@@ -236,8 +322,8 @@ class ProjectStore:
         doc = dict(schema_version=1, id=project_id, title=title, created_at=created, updated_at=created,
                    draft=initial_draft, latest_prompt_id=None, pending_run_id=None)
         with _LOCK:
-            self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
-            path = self.root / _folder_name(title, project_id)
+            root = self._location_path(location_id)
+            path = root / _folder_name(title, project_id)
             with _publish_directory(path) as temporary:
                 for directory in ("prompts", "runs", "exports"):
                     (temporary / directory).mkdir(mode=0o700)
@@ -251,10 +337,15 @@ class ProjectStore:
         folder = _check_path(path / name)
         return sorted((record for record in folder.iterdir() if _ID.fullmatch(record.stem)), key=lambda p: p.name)
 
-    def _run(self, path, run_id, include_result=False):
+    @staticmethod
+    def _run_path(path, run_id):
         directory = _check_path(_check_path(path / "runs") / _id(run_id))
         if not directory.is_dir():
             raise ProjectNotFound("Local run not found.")
+        return directory
+
+    def _run(self, path, run_id, include_result=False):
+        directory = self._run_path(path, run_id)
         record = _read(directory / "run.json")
         outcome = _check_path(directory / "outcome")
         if outcome.exists():
@@ -272,18 +363,25 @@ class ProjectStore:
 
     def _current_draft(self, path, doc):
         run_id = doc["pending_run_id"]
-        if run_id:
-            run = self._run(path, run_id, include_result=True)
-            if run["result"]:
-                result = run["result"]
-                return dict(text=doc["draft"]["text"], model=result["model"], provenance=result["provenance"], review_pending=False)
+        seen = set()
+        while run_id:
+            if run_id in seen:
+                raise ProjectStorageError("Local project run history contains a cycle.")
+            seen.add(run_id)
+            run = self._run(path, run_id)
+            if run["status"] == "succeeded":
+                outcome = _check_path(self._run_path(path, run_id) / "outcome")
+                return dict(text=doc["draft"]["text"], model=_read(outcome / "model.json"),
+                            provenance=_read(outcome / "provenance.json"), review_pending=False)
+            run_id = run.get("previous_run_id")
         return doc["draft"]
 
     def _detail(self, path, doc):
         prompts = [_read(record) for record in self._records(path, "prompts")]
         runs = [self._run(path, directory.name) for directory in self._records(path, "runs")]
         exports = [_read(_check_path(directory) / "export.json") for directory in self._records(path, "exports")]
-        return {**self._summary(path, doc), "draft": self._current_draft(path, doc),
+        location_id = next(item["id"] for item in self._locations() if Path(item["path"]) == path.parent)
+        return {**self._summary(path, doc, location_id), "draft": self._current_draft(path, doc),
                 "prompts": sorted(prompts, key=lambda item: item["created_at"]),
                 "runs": sorted(runs, key=lambda item: item["created_at"], reverse=True),
                 "exports": sorted(exports, key=lambda item: item["created_at"], reverse=True)}
@@ -346,7 +444,8 @@ class ProjectStore:
             directory = _check_path(path / "runs") / run_id
             created = _now()
             record = dict(id=run_id, prompt_id=prompt_id, created_at=created, finished_at=None,
-                          provider=provider, prompt_version="0.1" if demo else PROMPT_VERSION, error_code=None)
+                          provider=provider, prompt_version="0.1" if demo else PROMPT_VERSION, error_code=None,
+                          previous_run_id=doc["pending_run_id"])
             draft = self._current_draft(path, doc)
             with _publish_directory(directory) as temporary:
                 _write(temporary / "run.json", _json_bytes(record))
@@ -360,7 +459,7 @@ class ProjectStore:
     def finish_run(self, project_id, run_id, status, result=None, error_code=None):
         with _LOCK:
             path = self._path(project_id)
-            directory = _check_path(_check_path(path / "runs") / _id(run_id))
+            directory = self._run_path(path, run_id)
             try:
                 outcome = _check_path(directory / "outcome")
                 if outcome.exists():

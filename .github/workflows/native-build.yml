@@ -7,6 +7,32 @@ on:
 permissions:
   contents: read
 jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: packaging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install briefcase==0.4.7
+      - run: briefcase create linux system --target ubuntu:noble --no-input
+      - run: briefcase build linux system --target ubuntu:noble --no-input
+      - run: briefcase package linux system --target ubuntu:noble --adhoc-sign --no-input
+      - name: Verify Debian package metadata
+        run: |
+          for package in dist/*.deb; do
+            test "$(dpkg-deb -f "$package" Architecture)" = amd64
+            dpkg-deb -f "$package" Package Version Architecture Depends
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DetWeave-Ubuntu-24.04-amd64
+          path: packaging/dist/*.deb
+          if-no-files-found: error
   windows:
     runs-on: windows-latest
     steps:

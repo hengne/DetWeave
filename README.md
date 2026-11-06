@@ -34,7 +34,7 @@ python -m detweave serve
 
 On Windows, activate with `.venv\Scripts\activate`. Open `http://127.0.0.1:8765` for this browser-based Python edition. The service listens only on this computer. The native edition embeds the Python runtime and opens its own window.
 
-1. Choose **New project** in the left dropdown, enter a title and create a local project. Built-in synthetic examples remain available for offline exploration.
+1. Choose **New project** in the left dropdown, enter a title, select a storage location and create a local project. Built-in synthetic examples remain available for offline exploration.
 2. Enter the discussion or prompt. Choose a provider and model, then enter your own API key when making a live request.
 3. Run extraction. **Run progress / Thinking** shows actual provider-supplied reasoning when available, output fragments, elapsed time and connection activity. You can cancel the request.
 4. Review dimensions, materials, source quotes, conflicts and clarification questions. Add the missing information and extract again; submitted prompts and run outcomes are versioned in the project.
@@ -68,7 +68,7 @@ A **draft**, an **exportable model**, and a **backend-validated model** are sepa
 
 The application stores explicitly created projects locally. Prompt history includes the user's discussion and the extraction system prompt, so project folders and exported ZIPs may contain sensitive research content. API keys and raw model reasoning traces are not written to those project records. Choosing a remote provider sends the discussion to that provider; offline examples and local geometry checks do not.
 
-A standalone HTML preview works without Python, but it is a geometry viewer. The full application needs its bundled or installed runtime. Embedding Python source text inside HTML alone would not make the existing socket/thread backend run in a browser; see [delivery formats](docs/DISTRIBUTION.md).
+The single-file HTML application embeds its Python runtime and works offline for local modelling. It stores projects in browser-authorized folders or the browser project library. Remote APIs need internet and CORS permission. The separately exported geometry preview is a smaller viewer. See [delivery formats](docs/DISTRIBUTION.md).
 
 ## License and citation
 
@@ -99,3 +99,7 @@ The local workbench never executes model-generated code. Native Geant4/DD4hep ch
 - [Contributing](CONTRIBUTING.md)
 
 DetWeave is independent software, not an official CERN, Geant4, DD4hep or model-provider product.
+
+### Single HTML and project locations
+
+Releases include `DetWeave-0.2.0.html`, with embedded Python/WASM, validation and exporters. Open it directly without installing Python or starting a server. New projects require a storage location: desktop apps use a system directory picker, while mobile apps follow platform document permissions. The HTML supports browser-authorized folders or an explicitly labelled browser project library with complete ZIP backups. Remote model calls need internet and provider CORS permission. See the [standalone guide](standalone/README.md) and [delivery formats](docs/DISTRIBUTION.md).

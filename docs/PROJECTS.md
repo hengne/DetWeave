@@ -1,6 +1,6 @@
 # Local DetWeave projects
 
-The browser workbench saves named projects in `~/Documents/DetWeave/projects` by default. Set `DETWEAVE_PROJECTS_DIR` before starting a standalone server to choose a different root. The desktop launcher supplies its app data directory. Projects remain available when the workbench restarts.
+The browser workbench saves named projects in `~/Documents/DetWeave/projects` by default. Set `DETWEAVE_PROJECTS_DIR` before starting a standalone server to choose a different default. The native launcher supplies its app data directory. When creating a project, select the default or register an existing parent directory on the machine running DetWeave. DetWeave remembers these locations in `.locations.json` under the default directory and discovers projects there on restart. If a registered directory is temporarily unavailable, its projects appear again when it is accessible.
 
 A project folder starts with a filesystem-safe version of its original title and ends with a unique identifier. Changing the displayed title updates the project metadata. Its folder path stays stable.
 
@@ -18,9 +18,14 @@ All project mutations use JSON and the existing `X-DetWeave: 1` request header.
 | Method | Path | Result |
 | --- | --- | --- |
 | GET | `/api/projects` | Project summaries in `projects` |
-| POST | `/api/projects` | Create a project with `title` and an optional `draft` |
+| POST | `/api/projects` | Create a project with `title`, optional `location_id` and optional `draft` |
+| GET | `/api/projects/locations` | The default ID and registered parent directories, including availability |
+| POST | `/api/projects/locations` | Register an existing parent directory using its absolute `path` |
+| POST | `/api/projects/locations/pick` | Open the desktop folder picker and register the selected directory |
 | GET | `/api/projects/<id>` | Open the draft, prompt revisions, run summaries and export records |
 | POST | `/api/projects/<id>` | Save `title`, `draft`, or both |
 | GET | `/api/projects/<id>/runs/<run-id>` | Read a run and its result, when available |
 
 A draft includes `text`, `model`, `provenance`, `review_pending` and optional `json_text` for unapplied editor text. `/api/extract`, `/api/extract/stream` and `/api/export` accept a top-level `project_id` to persist the operation. The server returns a storage error if it cannot save the operation. A connected browser receives storage errors before a result is accepted.
+
+The standalone browser server offers the system picker on macOS and on Windows or Linux with Tk available in the graphical session. The location index reports picker support in `capabilities.system_picker`. Cancelling the system picker returns `{"cancelled": true}` without registering a directory. The absolute path entry remains available on the standalone server.

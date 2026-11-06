@@ -13,14 +13,17 @@ from . import __version__
 from .model import SCHEMA, validate
 from .providers import extract, ProviderError
 from .exporters import project_zip, svg
+from .folder_picker import FolderPickerError, pick_folder, picker_backend
 from .projects import ProjectNotFound, ProjectStore, persisted_result, public_provenance
 from .streaming import RunControl, RunError, timeouts
 
 ROOT=Path(__file__).parent
 MAX_BODY=2_000_000
 SLOTS=threading.BoundedSemaphore(3)
+FOLDER_PICKER_SLOT = threading.Lock()
 STORAGE_ERROR = dict(error="Could not read or save the local project. Check the project folder and available disk space.",
                      code="project_storage_error")
+CAPACITY_ERROR = dict(error="Three requests are already active. Wait for one to finish.", code="local_busy")
 STATIC = {
     "index.html": "text/html; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
@@ -107,6 +110,9 @@ class Handler(BaseHTTPRequestHandler):
         parts = path.split("/")
         if path == "/api/projects":
             self.send(200, {"projects": store.list()})
+        elif path == "/api/projects/locations":
+            capabilities = dict(mode="desktop", system_picker=picker_backend() is not None, register_path=True)
+            self.send(200, {"default_id": "default", "locations": store.locations(), "capabilities": capabilities})
         elif len(parts) == 4:
             self.send(200, store.get(parts[3]))
         elif len(parts) == 6 and parts[4] == "runs":
@@ -118,11 +124,34 @@ class Handler(BaseHTTPRequestHandler):
         store = ProjectStore()
         parts = path.split("/")
         if path == "/api/projects":
-            self.send(201, store.create(body.get("title"), body.get("draft")))
+            self.send(201, store.create(body.get("title"), body.get("draft"), body.get("location_id")))
+        elif path == "/api/projects/locations":
+            self.send(201, store.register_location(body.get("path")))
+        elif path == "/api/projects/locations/pick":
+            self.pick_project_location(store)
         elif len(parts) == 4:
             self.send(200, store.update(parts[3], body))
         else:
             self.send(404, {"error": "Not found."})
+
+    def pick_project_location(self, store):
+        backend = picker_backend()
+        if backend is None:
+            self.send(501, {"error": "A desktop folder picker is unavailable on the machine running DetWeave."})
+            return
+        if not FOLDER_PICKER_SLOT.acquire(blocking=False):
+            self.send(409, {"error": "Close the current folder picker before opening another one."})
+            return
+        try:
+            selected = pick_folder(backend)
+            if selected is None:
+                self.send(200, {"cancelled": True})
+            else:
+                self.send(201, store.register_location(selected))
+        except FolderPickerError as exc:
+            self.send(503, {"error": str(exc)})
+        finally:
+            FOLDER_PICKER_SLOT.release()
 
     @staticmethod
     def save_run_result(store, project_id, run_id, result, provider):
@@ -140,6 +169,11 @@ class Handler(BaseHTTPRequestHandler):
         project_id = body.get("project_id")
         store = ProjectStore() if project_id is not None else None
         run_id = store.start_run(project_id, text, provider) if store else None
+        if not SLOTS.acquire(blocking=False):
+            if store:
+                store.finish_run(project_id, run_id, "failed", error_code=CAPACITY_ERROR["code"])
+            self.send(429, CAPACITY_ERROR)
+            return
         try:
             if stream:
                 self.stream_extraction(body, store, project_id, run_id)
@@ -152,6 +186,8 @@ class Handler(BaseHTTPRequestHandler):
             if store:
                 self.save_run_failure(store, project_id, run_id, exc)
             raise
+        finally:
+            SLOTS.release()
 
     @staticmethod
     def save_run_failure(store, project_id, run_id, exc):
@@ -262,8 +298,10 @@ class Handler(BaseHTTPRequestHandler):
         if not self.allowed(post=True):return
         path=urlsplit(self.path).path
         project_api=path=="/api/projects" or path.startswith("/api/projects/")
-        if not project_api and not SLOTS.acquire(blocking=False):
-            self.send(429,{"error":"Three requests are already active. Wait for one to finish."});return
+        extraction=path in ("/api/extract", "/api/extract/stream")
+        needs_slot=not (project_api or extraction)
+        if needs_slot and not SLOTS.acquire(blocking=False):
+            self.send(429,CAPACITY_ERROR);return
         try:
             if self.headers.get("Content-Type","").split(";")[0]!="application/json":
                 self.send(415,{"error":"Use application/json."});return
@@ -273,7 +311,7 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.settimeout(250)
             body=json.loads(self.rfile.read(size),parse_constant=lambda s: (_ for _ in ()).throw(ValueError("Non-finite JSON value.")))
             if not isinstance(body,dict):raise ValueError("Request must be an object.")
-            if path in ("/api/extract", "/api/extract/stream"):
+            if extraction:
                 self.extract_request(body, stream=path.endswith("/stream"))
             elif project_api:
                 self.post_project(path, body)
@@ -299,7 +337,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             self.send(500,{"error":"Internal operation failed. No output was accepted."})
         finally:
-            if not project_api:SLOTS.release()
+            if needs_slot:SLOTS.release()
 
 
 def serve(port=8765):

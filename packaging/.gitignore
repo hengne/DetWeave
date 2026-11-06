@@ -1,0 +1,5 @@
+.briefcase/
+.venv/
+build/
+dist/
+logs/
