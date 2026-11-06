@@ -22,6 +22,8 @@ jobs:
       - run: xcodebuild -showsdks
       - run: briefcase create iOS --no-input
       - run: briefcase build iOS --no-input
+      - name: Launch iPhone simulator and verify app service
+        run: python smoke_ios.py
       - name: Package simulator app and Xcode project
         run: |
           set -euo pipefail
@@ -36,6 +38,12 @@ jobs:
           name: DetWeave-iOS-simulator-and-Xcode-project-unsigned
           path: packaging/dist/DetWeave-iOS-*.zip
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: DetWeave-iOS-simulator-validation
+          path: packaging/dist/DetWeave-iOS-simulator-*.png
+          if-no-files-found: warn
   linux:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -66,8 +74,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends xvfb xauth ./dist/*.deb
+          # setup-python adds a toolcache libpython for building. The installed
+          # system package must be tested against Ubuntu's runtime library.
+          env -u LD_LIBRARY_PATH ldd /usr/bin/detweave_native |
+            grep -E 'libpython3\.12\.so\.1\.0 => /(usr/)?lib/x86_64-linux-gnu/'
           native_log=$(mktemp)
-          timeout 45s xvfb-run -a /usr/bin/detweave_native >"$native_log" 2>&1 &
+          env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH \
+            timeout 45s xvfb-run -a /usr/bin/detweave_native >"$native_log" 2>&1 &
           native_pid=$!
           trap 'kill "$native_pid" 2>/dev/null || true; wait "$native_pid" 2>/dev/null || true; cat "$native_log"; rm -f "$native_log"' EXIT
           python - <<'PY'
@@ -118,6 +131,10 @@ jobs:
           name: DetWeave-Windows-unsigned
           path: packaging/dist/*
           if-no-files-found: error
+      - name: Smoke test the installed Windows application
+        timeout-minutes: 5
+        shell: pwsh
+        run: ./scripts/smoke_windows.ps1
   android:
     runs-on: ubuntu-latest
     steps:

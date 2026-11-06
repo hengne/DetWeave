@@ -1,11 +1,13 @@
 # Delivery formats / 发行形态
 
 DetWeave retains a shared Python geometry core and HTML/JavaScript interface.
-The native shells bundle the interpreter, dependencies and UI. Users do not
-need to install Python separately for a verified native package.
+macOS, Windows and mobile shells bundle the interpreter, dependencies and UI.
+The Linux Debian package links Ubuntu 24.04 system Python and declares its runtime
+dependencies; installing with `sudo apt install ./detweave-native_*.deb` resolves
+those dependencies. Users do not need to configure a separate Python environment.
 
-DetWeave 共用 Python 几何核心与 HTML/JavaScript 界面。原生封装包含解释器、依赖和页面；
-经验证的原生安装包不要求用户另装 Python。
+DetWeave 共用 Python 几何核心与 HTML/JavaScript 界面。macOS、Windows 和手机封装包含解释器、依赖和页面；
+Linux DEB 使用 Ubuntu 24.04 的系统 Python 库，安装时由 apt 处理依赖，不要求用户单独配置 Python 环境。
 
 | Format / 形式 | Meaning / 含义 |
 |---|---|
