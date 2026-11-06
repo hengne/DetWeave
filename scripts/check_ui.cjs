@@ -6,7 +6,7 @@ const fs=require('fs');const path=require('path');const assert=require('assert')
  const browser=await chromium.launch({headless:true, ...(process.env.DETWEAVE_CHROME ? {executablePath:process.env.DETWEAVE_CHROME} : {})});
  const page=await browser.newPage({viewport:{width:1440,height:1100}});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto('http://127.0.0.1:8765');
+ await page.goto(process.env.DETWEAVE_URL || 'http://127.0.0.1:8765');
  await page.waitForFunction(()=>document.querySelector('#export') && !document.querySelector('#export').disabled);
  await page.selectOption('#examples','sampling');
  await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('8'));
@@ -26,6 +26,33 @@ const fs=require('fs');const path=require('path');const assert=require('assert')
  await preview.goto('file://'+out+'/preview.html');await preview.screenshot({path:out+'/offline.png'});assert.equal(external.length,0);await preview.close();
  const zip=page.waitForEvent('download');await page.click('#export');await (await zip).saveAs(out+'/project.zip');assert(fs.readFileSync(out+'/project.zip').subarray(0,2).toString()==='PK');
  await page.selectOption('#provider','ark-coding');assert.equal(await page.inputValue('#base-url'),'https://ark.cn-beijing.volces.com/api/coding/v3');assert.equal(await page.inputValue('#model-name'),'ark-code-latest');
+ const expectedModels=['ark-code-latest','doubao-seed-evolving','doubao-seed-2.1-pro','doubao-seed-2.1-lite','doubao-seed-2.0-mini','glm-5.3','glm-5.3-flash','glm-latest','deepseek-v4.1-flash','deepseek-v4.1-flash-economy','deepseek-v4-flash','deepseek-v4-pro','kimi-k2.8-preview','kimi-k3','kimi-k3.1-pro'];
+ assert.deepEqual(await page.locator('#ark-model-select option').evaluateAll(opts=>opts.map(o=>o.value)),[...expectedModels,'__custom__']);
+ await page.fill('#api-key','DUMMY-MODEL-SWITCH');
+ for(const id of expectedModels){
+  await page.selectOption('#ark-model-select',id);
+  assert.equal(await page.evaluate(()=>configuredProvider().model),id);
+  assert.equal(await page.inputValue('#api-key'),'DUMMY-MODEL-SWITCH');
+  assert.equal(await page.inputValue('#base-url'),'https://ark.cn-beijing.volces.com/api/coding/v3');
+  assert(!(await page.locator('#model-name').isVisible()));
+ }
+ await page.selectOption('#ark-model-select','ark-code-latest');
+ await page.selectOption('#ark-thinking','disabled');
+ await page.selectOption('#ark-model-select','glm-5.3');
+ assert.equal(await page.inputValue('#ark-thinking'),'');
+ assert(await page.locator('#ark-thinking option[value="disabled"]').isDisabled());
+ await page.selectOption('#ark-model-select','__custom__');
+ assert(await page.locator('#model-name').isVisible());
+ assert.equal(await page.evaluate(()=>configuredProvider().model),'','Empty custom model silently selected a route');
+ await page.fill('#model-name','custom-test-model');
+ assert.equal(await page.evaluate(()=>configuredProvider().model),'custom-test-model');
+ await page.selectOption('#ark-model-select','ark-code-latest');
+ await page.fill('#api-key','');
+ await page.screenshot({path:out+'/ark-models.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Ark picker mobile layout overflows');
+ await page.screenshot({path:out+'/ark-models-mobile.png',fullPage:true});
+ await page.setViewportSize({width:1440,height:1100});
  assert.equal(await page.evaluate(()=>configuredProvider().thinking),undefined);
  await page.selectOption('#ark-thinking','disabled');assert.equal(await page.evaluate(()=>configuredProvider().thinking),'disabled');
  await page.fill('#api-key','DUMMY-SECRET-NOT-REAL');
@@ -36,6 +63,7 @@ const fs=require('fs');const path=require('path');const assert=require('assert')
  await page.fill('#source-text','任意不完整讨论，不是固定示例');assert(await page.isDisabled('#export'));
  await page.click('#extract');await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('只识别内置示例'));
  assert(await page.isDisabled('#export'));
+ if(await page.locator('#run-monitor').isVisible())await page.click('#run-close');
  await page.selectOption('#examples','sampling');await page.waitForFunction(()=>!document.querySelector('#export').disabled);
  await page.locator('#json-panel summary').click();
  const model=JSON.parse(await page.inputValue('#model-json'));model.volumes[0].shape.size_mm[0]=81;

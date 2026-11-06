@@ -15,6 +15,17 @@ const state = {
   view: "3d", selection: null, busy: false, examples: [], jsonCommitted: "",
 };
 const history = [];
+let activeExtraction = null;
+const streamTextLimit = 200_000;
+const streamLineLimit = 12_000_000;
+const runStages = {
+  connecting_local: "连接本地服务", starting: "请求已接收", received: "请求已接收", queued: "排队等待",
+  preparing: "准备提取", connecting: "连接服务商", connecting_provider: "连接服务商",
+  waiting_provider: "等待服务商数据", provider_event: "收到服务商数据",
+  buffered_response: "等待整段响应", parsing: "解析几何 JSON",
+  reasoning: "收到思考片段", output: "接收几何 JSON", retrying: "服务端重试",
+  validating: "校验提取结果", done: "已完成", failed: "失败", cancelled: "已取消",
+};
 const colors = {
   G4_AIR: "#8c9eb4", G4_Galactic: "#657d99", G4_W: "#a394de",
   G4_Pb: "#8ea9e8", G4_Si: "#54d8be", G4_Al: "#a5bbd0",
@@ -59,9 +70,13 @@ async function api(path, data, binary = false) {
     throw new Error("无法连接本地服务，请检查 DetWeave 是否仍在运行。");
   }
   if (response.ok) return binary ? response.blob() : response.json();
+  throw await responseError(response);
+}
+
+async function responseError(response) {
   const result = await response.json().catch(() => null);
   const message = result?.error?.message || result?.error || result?.message || result?.detail;
-  throw new Error(typeof message === "string" ? message : "本地服务返回 HTTP " + response.status);
+  return new Error(typeof message === "string" ? message : "本地服务返回 HTTP " + response.status);
 }
 
 function updateControls() {
@@ -78,7 +93,7 @@ function updateControls() {
     examples: !state.examples.length,
   };
   for (const [id, inactive] of Object.entries(disabled)) $(id).disabled = state.busy || inactive;
-  for (const id of ["import", "provider", "base-url", "model-name", "api-key", "ark-thinking"]) $(id).disabled = state.busy;
+  for (const id of ["import", "provider", "base-url", "model-name", "ark-model-select", "api-key", "ark-thinking", "total-timeout"]) $(id).disabled = state.busy;
   sourceInput.readOnly = state.busy;
   jsonInput.readOnly = state.busy;
   $("dirty-label").textContent = dirty ? "有尚未应用的原文修改" : "";
@@ -176,14 +191,37 @@ function setProvider(event) {
     $("api-key").value = "";
     $("ark-thinking").value = "";
   }
-  if (ark) model.setAttribute("list", "ark-coding-models");
-  else model.removeAttribute("list");
+  $("ark-model-select").value = arkCodingModel;
+  $("ark-model-fields").hidden = !ark;
+  $("model-name-label").hidden = ark;
+  model.hidden = ark;
   $("provider-fields").hidden = !live;
   $("ark-thinking-fields").hidden = !ark;
   const privacy = "提取时会将讨论原文发送到所选服务。密钥只保留在当前页面内存中。";
   if (ark) $("provider-help").textContent =
-    "模型栏可输入任意模型 ID。ark-code-latest 是服务端路由别名，可用模型取决于账号权限。" + privacy;
+    "ark-code-latest 跟随控制台设置；控制台选为 Auto 时自动路由。也可从菜单选择具体模型或手动输入 ID。" + privacy;
   else $("provider-help").textContent = live ? privacy : "仅匹配内置合成示例，适合离线体验。";
+  updateThinkingOptions();
+}
+
+function updateThinkingOptions() {
+  const required = $("provider").value === "ark-coding"
+    && ["glm-5.3", "glm-latest", "kimi-k3"].includes($("model-name").value.trim().toLowerCase());
+  $("ark-thinking").querySelector('[value="disabled"]').disabled = required;
+  if (required && $("ark-thinking").value === "disabled") $("ark-thinking").value = "";
+  $("ark-thinking-help").textContent = required
+    ? "该模型默认开启思考，官方说明不支持关闭。已使用默认或开启模式。"
+    : "显式开关需模型支持。接口拒绝时会显示错误。";
+}
+
+function selectArkModel() {
+  const selected = $("ark-model-select").value;
+  const custom = selected === "__custom__";
+  $("model-name").hidden = !custom;
+  $("model-name-label").hidden = !custom;
+  $("model-name").value = custom ? "" : selected;
+  updateThinkingOptions();
+  if (custom) $("model-name").focus();
 }
 
 function configuredProvider() {
@@ -193,8 +231,9 @@ function configuredProvider() {
   const provider = {
     kind: ark ? "openai" : choice,
     base_url: $("base-url").value.trim() || (ark ? arkCodingBase : ""),
-    model: $("model-name").value.trim() || (ark ? arkCodingModel : ""),
+    model: $("model-name").value.trim(),
     api_key: $("api-key").value,
+    total_timeout_s: $("total-timeout").value === "" ? 600 : Number($("total-timeout").value),
   };
   const thinking = $("ark-thinking").value;
   if (ark && ["enabled", "disabled"].includes(thinking)) provider.thinking = thinking;
@@ -230,11 +269,244 @@ async function extractGeometry(text) {
   if (provider.base_url && provider.kind !== "demo" && !$("base-url").validity.valid) {
     throw new Error("请填写有效的 Base URL。");
   }
-  const result = await api("/api/extract", { text, provider });
-  const report = result.report || await validated(result.model);
-  if (schemaFailed(report)) throw new Error(report.issues?.[0]?.message || "提取结果的 IR 结构无效。");
-  commit({ model: result.model, report, provenance: publicProvenance(result.provenance) });
-  notify(report.ready ? "已提取并通过当前导出检查。" : "已提取草稿。请核对待审项目。", "success");
+  if (provider.kind !== "demo" && (!Number.isInteger(provider.total_timeout_s)
+    || provider.total_timeout_s < 60 || provider.total_timeout_s > 900)) {
+    throw new Error("提取总时限需为 60–900 秒之间的整数。");
+  }
+  const operation = beginExtraction(provider.kind === "demo");
+  try {
+    const result = await streamExtraction(text, provider, operation);
+    operation.controller.signal.throwIfAborted();
+    if (!result?.model?.world || !Array.isArray(result.model.volumes)
+      || !Array.isArray(result.model.placements) || !Array.isArray(result.model.questions)
+      || !Array.isArray(result.model.notes) || !result.model.evidence
+      || !result.report || !Array.isArray(result.report.issues)
+      || !Array.isArray(result.report.instances)) {
+      throw new Error("流式响应未包含完整的几何模型与验证结果。");
+    }
+    if (schemaFailed(result.report)) {
+      throw new Error(result.report.issues[0]?.message || "提取结果的 IR 结构无效。");
+    }
+    commit({ model: result.model, report: result.report, provenance: publicProvenance(result.provenance) });
+    const message = result.report.ready ? "已提取并通过当前导出检查。" : "已提取草稿。请核对待审项目。";
+    finishExtraction(operation, "done", message);
+    notify(message, "success");
+    return true;
+  } catch (error) {
+    if (operation.controller.signal.aborted) {
+      const message = "已取消当前提取请求，保留当前模型。";
+      finishExtraction(operation, "cancelled", message);
+      notify(message);
+      return false;
+    }
+    finishExtraction(operation, "failed", error.message + " 保留当前模型。", error.code);
+    throw error;
+  }
+}
+
+function toggleRunMonitor(open) {
+  $("run-monitor").hidden = !open;
+  $("run-toggle").setAttribute("aria-expanded", String(open));
+}
+
+function clearRunMonitor() {
+  toggleRunMonitor(false);
+  for (const channel of ["reasoning", "output"]) {
+    $("run-" + channel).replaceChildren();
+    $("run-" + channel + "-truncated").hidden = true;
+  }
+  $("run-log").replaceChildren();
+  $("run-log-truncated").hidden = true;
+  $("run-stage").textContent = "待运行";
+  $("run-stage").dataset.state = "idle";
+  $("run-elapsed").textContent = "—";
+  $("run-activity").textContent = "—";
+  $("run-message").textContent = "开始提取后会在这里显示进度。";
+}
+
+function durationLabel(seconds) {
+  const rounded = Math.max(0, Math.floor(seconds));
+  return String(Math.floor(rounded / 60)).padStart(2, "0") + ":" + String(rounded % 60).padStart(2, "0");
+}
+
+function updateRunClock(operation) {
+  const now = operation.endedAt ?? performance.now();
+  const elapsed = durationLabel((now - operation.startedAt) / 1000);
+  const activity = operation.demo ? "离线演示"
+    : operation.providerAt == null ? "尚未收到"
+      : durationLabel((now - operation.providerAt) / 1000);
+  if ($("run-elapsed").textContent !== elapsed) $("run-elapsed").textContent = elapsed;
+  if ($("run-activity").textContent !== activity) $("run-activity").textContent = activity;
+}
+
+function setRunStage(stage, tone = "active", message) {
+  const label = $("run-stage");
+  label.textContent = runStages[stage] || "运行中";
+  label.dataset.state = tone;
+  if (message) $("run-message").textContent = message.slice(0, 1600);
+}
+
+function logRunEvent(operation, message, { tone = "", elapsed_s } = {}) {
+  const log = $("run-log");
+  const follow = log.scrollHeight - log.clientHeight - log.scrollTop < 24;
+  const item = document.createElement("li");
+  const stamp = document.createElement("time");
+  stamp.textContent = durationLabel(Number.isFinite(elapsed_s) ? elapsed_s : (performance.now() - operation.startedAt) / 1000);
+  item.className = tone;
+  item.append(stamp, document.createTextNode(message.slice(0, 1000)));
+  log.append(item);
+  if (log.children.length > 100) {
+    log.firstElementChild.remove();
+    $("run-log-truncated").hidden = false;
+  }
+  if (follow) log.scrollTop = log.scrollHeight;
+}
+
+function beginExtraction(demo) {
+  const operation = {
+    controller: new AbortController(), startedAt: performance.now(), demo,
+    providerAt: null, received: new Set(), buffers: {},
+  };
+  for (const channel of ["reasoning", "output"]) {
+    const node = document.createTextNode("");
+    $("run-" + channel).replaceChildren(node);
+    $("run-" + channel + "-truncated").hidden = true;
+    operation.buffers[channel] = node;
+  }
+  $("run-log").replaceChildren();
+  $("run-log-truncated").hidden = true;
+  $("run-cancel").disabled = false;
+  setRunStage("connecting_local", "active", "正在等待本地服务接收请求。");
+  logRunEvent(operation, "发起提取请求。");
+  activeExtraction = operation;
+  updateRunClock(operation);
+  operation.timer = setInterval(() => updateRunClock(operation), 250);
+  toggleRunMonitor(true);
+  $("run-close").focus({ preventScroll: true });
+  return operation;
+}
+
+function finishExtraction(operation, stage, message, code) {
+  operation.endedAt = performance.now();
+  clearInterval(operation.timer);
+  activeExtraction = null;
+  $("run-cancel").disabled = true;
+  setRunStage(stage, stage, message);
+  logRunEvent(operation, (code ? "[" + code + "] " : "") + message, { tone: stage === "failed" ? "failure" : "" });
+  updateRunClock(operation);
+}
+
+function appendRunText(operation, channel, text) {
+  const node = operation.buffers[channel];
+  const room = streamTextLimit - node.length;
+  if (text.length > room) $("run-" + channel + "-truncated").hidden = false;
+  if (!room) return;
+  const pre = $("run-" + channel);
+  const follow = pre.scrollHeight - pre.clientHeight - pre.scrollTop < 24;
+  node.appendData(text.slice(0, room));
+  if (follow) pre.scrollTop = pre.scrollHeight;
+}
+
+function handleRunEvent(operation, event) {
+  const { type, elapsed_s } = event;
+  const now = performance.now();
+  if (!operation.demo && ["reasoning", "output", "usage", "activity"].includes(type)) {
+    operation.providerAt = now;
+  }
+  if (type === "status") {
+    const message = typeof event.message === "string" ? event.message : "";
+    const stage = event.stage;
+    if (stage === "provider_event" && !operation.demo) operation.providerAt = now;
+    setRunStage(["done", "failed", "cancelled"].includes(stage) ? "validating" : stage, "active", message);
+    if (message) logRunEvent(operation, message, { elapsed_s });
+  } else if (type === "heartbeat") {
+    const age = event.seconds_since_provider_event;
+    if (!operation.demo && Number.isFinite(age) && age >= 0) operation.providerAt = now - age * 1000;
+    if (operation.heartbeatLoggedAt == null || now - operation.heartbeatLoggedAt >= 10_000) {
+      logRunEvent(operation, "本地心跳 · 等待下一条数据。", { tone: "heartbeat", elapsed_s });
+      operation.heartbeatLoggedAt = now;
+    }
+  } else if ((type === "output" || (type === "reasoning" && !operation.demo)) && typeof event.text === "string" && event.text) {
+    appendRunText(operation, type, event.text);
+    if (!operation.received.has(type)) {
+      const message = type === "reasoning" ? "收到服务商公开的思考片段。" : "收到首个几何 JSON 片段。";
+      setRunStage(type, "active", message);
+      logRunEvent(operation, message, { elapsed_s });
+      operation.received.add(type);
+    }
+  } else if (type === "usage") {
+    const model = typeof event.response_model === "string" && event.response_model;
+    const usage = event.usage && Object.entries(event.usage)
+      .filter(([, value]) => Number.isFinite(value))
+      .map(([key, value]) => key + "=" + value).join(" · ");
+    logRunEvent(operation, ["服务商响应信息", model, usage].filter(Boolean).join(" · "), { elapsed_s });
+  }
+  updateRunClock(operation);
+}
+
+function parseRunLine(line) {
+  if (line.length > streamLineLimit) throw new Error("流式响应中的单条事件过大。");
+  if (!line.trim()) return null;
+  try {
+    const event = JSON.parse(line);
+    if (typeof event?.type === "string") return event;
+  } catch { /* Invalid events are reported below. */ }
+  throw new Error("本地服务返回了无效的流式事件。");
+}
+
+async function streamExtraction(text, provider, operation) {
+  const { signal } = operation.controller;
+  let response;
+  try {
+    response = await fetch("/api/extract/stream", {
+      method: "POST", cache: "no-store", signal,
+      headers: { "Content-Type": "application/json", "X-DetWeave": "1", Accept: "application/x-ndjson" },
+      body: JSON.stringify({ text, provider }),
+    });
+  } catch (error) {
+    if (signal.aborted) throw error;
+    throw new Error("无法连接本地流式服务，请检查 DetWeave 是否仍在运行。");
+  }
+  if (response.status === 404) throw new Error("本地服务没有流式提取接口。请重启新版 DetWeave。");
+  if (!response.ok) throw await responseError(response);
+  if (!response.body || !response.headers.get("Content-Type")?.toLowerCase().startsWith("application/x-ndjson")) {
+    throw new Error("本地服务未返回 NDJSON 流式响应。");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let buffer = "";
+  try {
+    while (true) {
+      let part;
+      try { part = await reader.read(); } catch (error) {
+        if (signal.aborted) throw error;
+        throw new Error("流式连接意外中断。");
+      }
+      signal.throwIfAborted();
+      try {
+        buffer += part.done ? decoder.decode() : decoder.decode(part.value, { stream: true });
+      } catch {
+        throw new Error("流式响应包含无效的 UTF-8 数据。");
+      }
+      const lines = buffer.split("\n");
+      buffer = part.done ? "" : lines.pop();
+      if (buffer.length > streamLineLimit) throw new Error("流式响应中的单条事件过大。");
+      for (const line of lines) {
+        const event = parseRunLine(line);
+        if (!event) continue;
+        if (event.type === "result") return event.result;
+        if (event.type === "error") {
+          const error = new Error(typeof event.message === "string" && event.message ? event.message.slice(0, 1600) : "服务端报告流式提取失败。");
+          if (typeof event.code === "string") error.code = event.code.slice(0, 80);
+          throw error;
+        }
+        handleRunEvent(operation, event);
+      }
+      if (part.done) throw new Error("流式连接已结束，未收到最终提取结果。");
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
 }
 
 function nodeButton(type, id, meta, symbol, label = id) {
@@ -924,8 +1196,9 @@ async function answerQuestion(index, action) {
   if (action === "extract") {
     remember();
     sourceInput.value = text;
-    await extractGeometry(text);
-    history.splice(history.length - 1, 1);
+    renderSummary();
+    updateControls();
+    if (await extractGeometry(text)) history.pop();
     return;
   }
   if (!window.confirm("记录此答复并移出待澄清项？后续需要应用 IR 修改或重新提取。")) {
@@ -978,6 +1251,24 @@ async function initialize() {
 }
 
 $("provider").addEventListener("change", setProvider);
+$("ark-model-select").addEventListener("change", selectArkModel);
+$("model-name").addEventListener("input", updateThinkingOptions);
+$("run-toggle").addEventListener("click", () => toggleRunMonitor($("run-monitor").hidden));
+function closeRunMonitor() {
+  toggleRunMonitor(false);
+  $("run-toggle").focus({ preventScroll: true });
+}
+$("run-close").addEventListener("click", closeRunMonitor);
+$("run-monitor").addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeRunMonitor();
+});
+$("run-cancel").addEventListener("click", () => {
+  if (!activeExtraction) return;
+  $("run-cancel").disabled = true;
+  $("run-message").textContent = "正在取消提取…";
+  $("run-close").focus({ preventScroll: true });
+  activeExtraction.controller.abort();
+});
 sourceInput.addEventListener("input", () => { renderSummary(); updateControls(); });
 jsonInput.addEventListener("input", () => { renderSummary(); updateControls(); });
 $("extract").addEventListener("click", () => run("正在提取几何草稿…", () => extractGeometry(sourceInput.value)));
@@ -1054,6 +1345,7 @@ $("undo").addEventListener("click", () => {
 });
 $("clear").addEventListener("click", () => {
   commit({ model: null, report: null });
+  clearRunMonitor();
   $("examples").value = "";
   $("api-key").value = "";
   notify("工作台已清空。可撤销此操作。");

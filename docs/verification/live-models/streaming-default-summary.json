@@ -1,0 +1,27 @@
+{
+  "first_event_s": {
+    "status": 0.02,
+    "heartbeat": 1.03,
+    "activity": 5.23,
+    "usage": 5.23,
+    "reasoning": 5.23,
+    "output": 188.72,
+    "result": 205.41
+  },
+  "events": {
+    "status": 5,
+    "heartbeat": 12,
+    "activity": 5535,
+    "usage": 2,
+    "reasoning": 4606,
+    "output": 928,
+    "result": 1
+  },
+  "characters": {
+    "reasoning": 18714,
+    "output": 2318
+  },
+  "elapsed_s": 205.41,
+  "thinking_requested": "provider_default",
+  "passed": true
+}

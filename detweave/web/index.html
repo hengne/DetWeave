@@ -69,16 +69,43 @@
             <div id="provider-fields" class="provider-fields" hidden>
               <label for="base-url">Base URL <span class="muted">可选</span></label>
               <input id="base-url" type="url" autocomplete="off" placeholder="使用服务端默认地址">
-              <label for="model-name">模型 ID</label>
+              <div id="ark-model-fields" class="provider-fields" hidden>
+                <label for="ark-model-select">订阅模型</label>
+                <select id="ark-model-select" aria-describedby="ark-model-help">
+                  <option value="ark-code-latest">ark-code-latest · 跟随控制台 / Auto</option>
+                  <optgroup label="Doubao">
+                    <option value="doubao-seed-evolving">doubao-seed-evolving</option>
+                    <option value="doubao-seed-2.1-pro">doubao-seed-2.1-pro</option>
+                    <option value="doubao-seed-2.1-lite">doubao-seed-2.1-lite</option>
+                    <option value="doubao-seed-2.0-mini">doubao-seed-2.0-mini</option>
+                  </optgroup>
+                  <optgroup label="GLM">
+                    <option value="glm-5.3">glm-5.3</option>
+                    <option value="glm-5.3-flash">glm-5.3-flash</option>
+                    <option value="glm-latest">glm-latest · glm-5.3 别名</option>
+                  </optgroup>
+                  <optgroup label="DeepSeek">
+                    <option value="deepseek-v4.1-flash">deepseek-v4.1-flash</option>
+                    <option value="deepseek-v4.1-flash-economy">deepseek-v4.1-flash-economy</option>
+                    <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+                    <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+                  </optgroup>
+                  <optgroup label="Kimi">
+                    <option value="kimi-k2.8-preview">kimi-k2.8-preview</option>
+                    <option value="kimi-k3">kimi-k3</option>
+                    <option value="kimi-k3.1-pro">kimi-k3.1-pro</option>
+                  </optgroup>
+                  <option value="__custom__">手动输入模型 ID…</option>
+                </select>
+                <p id="ark-model-help" class="fine-print">13 个模型 + 路由入口 + 别名。核对于 2026-11-06；实际权限以账号及区域为准。<a href="https://docs.volcengine.com/docs/ark/coding-plan-personal-ai-other-tools?lang=zh" target="_blank" rel="noopener noreferrer">官方模型清单 ↗</a></p>
+              </div>
+              <label id="model-name-label" for="model-name">模型 ID</label>
               <input id="model-name" type="text" autocomplete="off" placeholder="输入所用模型 ID">
-              <datalist id="ark-coding-models">
-                <option value="ark-code-latest"></option>
-                <option value="doubao-seed-evolving"></option>
-                <option value="glm-5.3"></option>
-                <option value="deepseek-v4-flash"></option>
-              </datalist>
               <label for="api-key">API Key <span class="muted">仅本次会话</span></label>
               <input id="api-key" type="password" autocomplete="off" placeholder="输入该服务的 API Key">
+              <label for="total-timeout">提取总时限 <span class="muted">秒</span></label>
+              <input id="total-timeout" type="number" value="600" min="60" max="900" step="1" aria-describedby="timeout-help">
+              <p id="timeout-help" class="fine-print">60–900 秒。服务商连接与无数据等待另有时限。</p>
               <div id="ark-thinking-fields" class="provider-fields" hidden>
                 <label for="ark-thinking">深度思考</label>
                 <select id="ark-thinking" aria-describedby="ark-thinking-help">
@@ -92,8 +119,41 @@
             <p id="provider-help" class="fine-print">仅匹配内置合成示例，适合离线体验。</p>
           </div>
           <button type="button" class="button primary extract" id="extract"><span>提取几何草稿</span><span aria-hidden="true">→</span></button>
-          <p id="status" class="status" role="status" aria-live="polite">正在加载内置示例…</p>
+          <div class="run-trigger-row">
+            <p id="status" class="status" role="status" aria-live="polite">正在加载内置示例…</p>
+            <button type="button" class="button compact quiet" id="run-toggle" aria-expanded="false" aria-controls="run-monitor">运行过程 / Thinking</button>
+          </div>
         </div>
+        <section class="run-monitor" id="run-monitor" aria-labelledby="run-title" hidden>
+          <header class="run-head">
+            <div class="grow"><p class="eyebrow">LIVE EXTRACTION</p><h2 id="run-title">运行过程 <span>Thinking</span></h2></div>
+            <button type="button" class="button compact" id="run-cancel" disabled>取消提取</button>
+            <button type="button" class="button compact quiet" id="run-close" aria-label="收起运行过程">收起</button>
+          </header>
+          <dl class="run-metrics">
+            <div><dt>阶段</dt><dd id="run-stage" data-state="idle">待运行</dd></div>
+            <div><dt>已用时</dt><dd id="run-elapsed">—</dd></div>
+            <div><dt>距服务商数据</dt><dd id="run-activity">—</dd></div>
+          </dl>
+          <p class="run-message" id="run-message" role="status" aria-live="polite">开始提取后会在这里显示进度。</p>
+          <div class="run-streams">
+            <section aria-labelledby="run-reasoning-title">
+              <h3 id="run-reasoning-title">服务商返回的思考内容</h3>
+              <pre id="run-reasoning" tabindex="0" aria-labelledby="run-reasoning-title" data-empty="尚未收到服务商公开的思考内容。"></pre>
+              <p class="run-truncated" id="run-reasoning-truncated" hidden>已达到 200,000 字符显示上限。</p>
+            </section>
+            <section aria-labelledby="run-output-title">
+              <h3 id="run-output-title">几何 JSON 片段</h3>
+              <pre id="run-output" tabindex="0" aria-labelledby="run-output-title" data-empty="尚未收到输出片段。"></pre>
+              <p class="run-truncated" id="run-output-truncated" hidden>已达到 200,000 字符显示上限。最终结果将单独校验。</p>
+            </section>
+          </div>
+          <section class="run-events" aria-labelledby="run-events-title">
+            <h3 id="run-events-title">事件日志 <span id="run-log-truncated" class="muted" hidden>最近 100 条</span></h3>
+            <ol class="run-log" id="run-log" tabindex="0" aria-labelledby="run-events-title"></ol>
+          </section>
+          <p class="run-foot fine-print">本地心跳只表示页面仍在等待。此面板仅保留本页最近一次运行，不写入项目文件。</p>
+        </section>
       </section>
 
       <section class="panel geometry" aria-labelledby="geometry-title">
@@ -185,7 +245,7 @@
   </main>
 
   <footer class="shell footer">
-    <span>DetWeave / 0.1</span>
+    <span>DetWeave / 0.1.1</span>
     <span>世界坐标 · 毫米 · 平移放置</span>
   </footer>
 </body>

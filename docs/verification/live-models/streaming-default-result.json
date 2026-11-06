@@ -1,0 +1,160 @@
+{
+  "model": {
+    "schema_version": "0.1",
+    "title": "钨/聚苯乙烯20周期叠层：总厚度冲突",
+    "source_text": "合成测试会议：世界是400×400×400 mm的G4_AIR盒，位于原点。做20个钨/聚苯乙烯周期，钨G4_W每片1 mm厚，聚苯乙烯G4_POLYSTYRENE每片5 mm厚，横向100×100 mm，沿z连续叠放，整个叠层中心位于原点，无间隙。但是总厚度必须不超过100 mm。不要擅自更改任何一项，遇到冲突请提问。",
+    "world": {
+      "size_mm": [
+        400,
+        400,
+        400
+      ],
+      "material": "G4_AIR"
+    },
+    "volumes": [
+      {
+        "id": "tungsten_plate",
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            100,
+            100,
+            1
+          ]
+        },
+        "material": "G4_W"
+      },
+      {
+        "id": "polystyrene_plate",
+        "shape": {
+          "type": "box",
+          "size_mm": [
+            100,
+            100,
+            5
+          ]
+        },
+        "material": "G4_POLYSTYRENE"
+      }
+    ],
+    "placements": [],
+    "evidence": {
+      "world.size_mm": {
+        "status": "stated",
+        "quote": "世界是400×400×400 mm",
+        "note": "世界盒的全长尺寸为400×400×400 mm；原文另明确其位于原点。"
+      },
+      "world.material": {
+        "status": "stated",
+        "quote": "G4_AIR",
+        "note": "世界材料为G4_AIR。"
+      },
+      "volumes.tungsten_plate.shape": {
+        "status": "stated",
+        "quote": [
+          "钨G4_W每片1 mm厚",
+          "横向100×100 mm",
+          "沿z连续叠放"
+        ],
+        "note": "钨片表示为盒，横向x-y尺寸为100×100 mm，z方向厚度为1 mm。"
+      },
+      "volumes.tungsten_plate.material": {
+        "status": "stated",
+        "quote": "钨G4_W",
+        "note": "钨片材料为G4_W。"
+      },
+      "volumes.polystyrene_plate.shape": {
+        "status": "stated",
+        "quote": [
+          "聚苯乙烯G4_POLYSTYRENE每片5 mm厚",
+          "横向100×100 mm",
+          "沿z连续叠放"
+        ],
+        "note": "聚苯乙烯片表示为盒，横向x-y尺寸为100×100 mm，z方向厚度为5 mm。"
+      },
+      "volumes.polystyrene_plate.material": {
+        "status": "stated",
+        "quote": "聚苯乙烯G4_POLYSTYRENE",
+        "note": "聚苯乙烯片材料为G4_POLYSTYRENE。"
+      }
+    },
+    "questions": [
+      {
+        "id": "resolve_total_thickness_conflict",
+        "question": "按给定片厚，20个钨/聚苯乙烯周期的总厚度为20×(1+5)=120 mm，与“总厚度必须不超过100 mm”冲突。请明确允许修改哪一项并给出新值：周期数、钨片厚度、聚苯乙烯片厚度或100 mm总厚度上限；若所有数值均不可修改，请确认该组合没有可行几何。",
+        "targets": [
+          "volumes.tungsten_plate.shape",
+          "volumes.polystyrene_plate.shape",
+          "placements"
+        ]
+      }
+    ],
+    "notes": [
+      "派生计算，需人工复核：20×(1+5)=120 mm，比100 mm上限多20 mm。",
+      "为避免擅自减少周期、改变片厚、引入间隙或放宽厚度上限，当前未生成叠层放置。原文要求的20个周期（每种材料20片）、沿z连续无间隙叠放、整个叠层中心位于原点及总厚度不超过100 mm均保留为待解决要求。"
+    ]
+  },
+  "report": {
+    "ready": false,
+    "stage": "draft",
+    "issues": [
+      {
+        "level": "blocker",
+        "code": "empty",
+        "path": "placements",
+        "message": "No detector placements have been specified."
+      },
+      {
+        "level": "blocker",
+        "code": "unused",
+        "path": "volumes",
+        "message": "Volumes without placements: polystyrene_plate, tungsten_plate"
+      },
+      {
+        "level": "blocker",
+        "code": "clarification",
+        "path": "resolve_total_thickness_conflict",
+        "message": "按给定片厚，20个钨/聚苯乙烯周期的总厚度为20×(1+5)=120 mm，与“总厚度必须不超过100 mm”冲突。请明确允许修改哪一项并给出新值：周期数、钨片厚度、聚苯乙烯片厚度或100 mm总厚度上限；若所有数值均不可修改，请确认该组合没有可行几何。"
+      }
+    ],
+    "instances": [],
+    "model_sha256": "7c296c65912549e495fb8943edccf06a6ae19f5900e351aa3a30fdcf21f06958",
+    "counts": {
+      "definitions": 2,
+      "instances": 0
+    },
+    "checks": {
+      "schema": "passed",
+      "analytic_geometry": "passed",
+      "evidence": "needs_review",
+      "geant4": "not_run",
+      "dd4hep": "not_run"
+    },
+    "scope": "Axis-aligned boxes and full z-axis tubes; translations only; analytic comparison tolerance 1e-7 mm. Quote presence is checked, not semantic truth. Backend validation must be run separately."
+  },
+  "provenance": {
+    "provider": "openai",
+    "model": "ark-code-latest",
+    "response_model": "auto",
+    "thinking": "provider_default",
+    "prompt_version": "0.2",
+    "source_sha256": "d36494613146ca8b5ffbd7fe5f1616543e7ad9acfde0b7d5ef9654fe17438d80",
+    "duration_s": 205.39,
+    "usage": {
+      "completion_tokens": 5550,
+      "prompt_tokens": 1928,
+      "total_tokens": 7478,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 4607
+      }
+    },
+    "transport": "stream-requested",
+    "total_timeout_s": 600.0,
+    "idle_timeout_s": 90.0,
+    "output_bytes": 3189,
+    "reasoning_bytes": 21086
+  }
+}

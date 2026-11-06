@@ -1,12 +1,8 @@
 """Small provider adapters. Keys are request-scoped and never written to artifacts."""
 from __future__ import annotations
-import hashlib
 import json
 import re
-import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from .model import SCHEMA
 
 PROMPT_VERSION = "0.2"
@@ -35,11 +31,6 @@ Schema follows:\n""" + json.dumps(SCHEMA, ensure_ascii=False)
 
 class ProviderError(ValueError):
     pass
-
-
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
 
 
 def request_spec(config, text):
@@ -96,7 +87,7 @@ def response_text(kind, data):
     candidate = data["candidates"][0]
     if candidate.get("finishReason") not in (None, "STOP"):
         raise ProviderError("Gemini response was incomplete or blocked.")
-    return "".join(p.get("text", "") for p in candidate["content"]["parts"]), data.get("usageMetadata", {})
+    return "".join(p.get("text", "") for p in candidate["content"]["parts"] if not p.get("thought")), data.get("usageMetadata", {})
 
 
 def parse_response(content, source):
@@ -119,33 +110,7 @@ def parse_response(content, source):
     return model
 
 
-def extract(text, config):
-    if not isinstance(text, str) or not text.strip() or len(text) > 30000:
-        raise ProviderError("Input must contain 1–30,000 characters. Split longer discussions into reviewed sections.")
-    started = time.monotonic()
-    kind, url, headers, body = request_spec(config, text)
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
-    opener = urllib.request.build_opener(NoRedirect())
-    for attempt in range(2):
-        try:
-            with opener.open(req, timeout=120) as response:
-                raw = response.read(MAX_RESPONSE_BYTES + 1)
-            if len(raw) > MAX_RESPONSE_BYTES:
-                raise ProviderError("Provider response exceeded size limit.")
-            data = json.loads(raw)
-            content, usage = response_text(kind, data)
-            model = parse_response(content, text)
-            return model, dict(provider=kind, model=config["model"], response_model=data.get("model"), thinking=config.get("thinking", "provider_default"), prompt_version=PROMPT_VERSION,
-                               source_sha256=hashlib.sha256(text.encode()).hexdigest(), duration_s=round(time.monotonic()-started, 2), usage=usage)
-        except urllib.error.HTTPError as exc:
-            if exc.code in (429, 502, 503, 504) and attempt == 0:
-                time.sleep(1)
-                continue
-            # Never echo provider bodies: they can contain credentials or private prompt data.
-            raise ProviderError(f"Provider HTTP {exc.code}. Check endpoint, credentials, quota and model access.") from None
-        except TimeoutError:
-            raise ProviderError("Provider timed out after 120 seconds. Try a faster model or a shorter discussion.") from None
-        except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
-            if isinstance(exc, ProviderError):
-                raise
-            raise ProviderError("Provider request failed or returned an unsupported response. Check connectivity and API protocol.") from None
+def extract(text, config, emit=None, control=None):
+    """Return a complete model; optionally forward ephemeral live provider events."""
+    from .streaming import extract_stream
+    return extract_stream(text, config, emit=emit, control=control)

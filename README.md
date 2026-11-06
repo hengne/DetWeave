@@ -6,7 +6,7 @@ DetWeave 是面向 Geant4 用户的对话式探测器几何建模工作台。粘
 接入你选择的大模型 API，审阅统一几何模型及其原文依据，再导出 GDML、Geant4 C++ 工程
 与 DD4hep compact XML / detector constructor。
 
-当前为 **v0.1 研究原型**：小型层状量能器、晶体／硅片阵列与简单束流测试几何。
+当前为 **v0.1.1 研究原型**：小型层状量能器、晶体／硅片阵列与简单束流测试几何。
 模型草案、可导出模型和实际后端验证是三个独立状态。
 
 ![DetWeave 工作台](docs/workbench.png)
@@ -28,7 +28,8 @@ python -m detweave serve
 或执行 `python -m detweave serve`。服务仅监听本机，不是公开托管站点。
 
 1. 加载“钨／硅采样结构”或“圆管与硅片”内置示例，可在没有 API key 时体验完整导出流程。
-2. 处理自己的无格式文本时，选择 API 协议，填写 Base URL、模型标识及 API key。火山用户可直接选择 Coding Plan 预设。
+2. 处理自己的无格式文本时，选择 API 协议，填写 Base URL、模型标识及 API key。火山用户可直接选择 Coding Plan 预设，并从下拉菜单选择[当前文档中的全部生成模型](docs/ARK_MODELS.md)。
+   提取时自动展开“运行过程 / Thinking”，可查看服务商公开的思考片段、几何 JSON、耗时及最近数据时间，也可取消。
 3. 审阅部件、参数、引用原文和澄清问题；用补充回答重新抽取，或编辑结构化模型。
 4. 查看正投影和可旋转三维模型。关键假设和问题未解决前，工程导出被阻止。
 5. 下载项目 ZIP，在目标 Geant4 / DD4hep 环境编译和加载；按随附说明保存实际验证报告。
@@ -43,6 +44,7 @@ GPT-4 尚未实测；本地模拟协议测试不代表模型理解能力。
 | 能力 | v0.1 范围 |
 |---|---|
 | 多模型 API | OpenAI Chat Completions 兼容、Anthropic Messages、Gemini generateContent；模型 ID 可配置，包括账号可用的 GPT-4；支持 localhost 兼容服务 |
+| 流式进度 | 可收起的 Thinking 窗口、公开思考与 JSON 分栏、真实数据活动与本地心跳区分、取消、默认 600 秒可调总时限 |
 | 无格式文本输入 | 中文、英文和混合讨论，由所选模型抽取；30,000 字符请求上限 |
 | 统一模型 | 严格 JSON Schema；长方体、沿 z 的完整圆柱／圆管；局部平移、层级、重复阵列 |
 | 来源与澄清 | 关键参数的原文引用、明确／确认／推导／假设／未解决状态；缺来源或未确认项阻止导出 |
@@ -74,6 +76,7 @@ API key 仅存在于本次请求／页面内存，不写入项目、日志或浏
 本地项目 JSON 与 ZIP 会包含原始文本，分享前应自行检查适用范围。费用由模型服务商另计；
 公开 GitHub 仓库不附送模型 API 额度。应用不启用自动付费部署或云算力。
 
+- [流式进度、Thinking 与超时](docs/STREAMING.md)
 - [架构与功能设计](docs/ARCHITECTURE.md)
 - [后续开发路线与验收标准](docs/ROADMAP.md)
 - [验证记录及已知边界](docs/VALIDATION.md)
