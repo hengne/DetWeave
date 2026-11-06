@@ -12,3 +12,7 @@ must update the prompt version and include representative fixtures.
 
 The framework does not execute arbitrary source from model responses. Backend code is produced
 from reviewed templates. Do not add automatic shell execution of returned model text.
+
+This release uses the DetWeave Noncommercial Attribution and Citation License.
+By submitting a contribution, identify its original authorship and any third-party licenses,
+and provide it on terms compatible with the current project license. Do not remove author notices.

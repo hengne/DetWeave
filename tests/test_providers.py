@@ -19,6 +19,14 @@ def test_local_model_no_key():
     assert 'Authorization' not in headers
 
 
+def test_official_openai_uses_current_output_limit_without_changing_compatible_providers():
+    config=dict(kind='openai',model='gpt-6.1-sol',api_key='dummy')
+    body=request_spec(config,'source')[3]
+    assert body['max_completion_tokens']==12000 and 'max_tokens' not in body
+    compatible=request_spec({**config,'base_url':'https://example.com/v1'},'source')[3]
+    assert compatible['max_tokens']==12000 and 'max_completion_tokens' not in compatible
+
+
 def test_model_cannot_self_confirm_or_replace_original_text():
     obj={'source_text':'forged','evidence':{'x':{'status':'confirmed'}}}
     result=parse_response('```json\n'+json.dumps(obj)+'\n```','original')

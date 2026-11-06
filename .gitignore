@@ -11,3 +11,11 @@ dist/
 local/
 node_modules/
 .DS_Store
+
+# Native packaging generated files and private signing material
+packaging/.briefcase/
+packaging/logs/
+*.keystore
+*.jks
+*.p12
+*.mobileprovision

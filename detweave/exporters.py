@@ -150,6 +150,8 @@ def project_files(model, provenance=None):
         clean["note"] = "Extraction metadata refers to its recorded source hash; subsequent human edits are represented by the exported model."
         files["provenance.json"] = json.dumps(clean, indent=2, ensure_ascii=False)+"\n"
     files["README.md"]=(ROOT/"templates"/"EXPORT_README.md").read_text()
+    for name in ("CITATION.cff", "NOTICE.txt", "LICENSE.txt"):
+        files[name] = (ROOT/"templates"/name).read_text()
     manifest=dict(detweave_version=__version__,schema_version="0.1",model_sha256=report["model_sha256"],material_catalog="Geant4 11.1.3 NIST snapshot",backend_runtime_checks="not_run",checks={"points_per_placement":10000,"tolerance_mm":0,"seed":12345},
                   sha256={name:hashlib.sha256(value.encode()).hexdigest() for name,value in sorted(files.items())})
     files["manifest.json"]=json.dumps(manifest,indent=2)+"\n"

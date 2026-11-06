@@ -19,4 +19,4 @@ referenced by a material. See `docs/VALIDATION.md` for the tested environment.
 
 Definitions are from [Geant4](https://geant4.web.cern.ch/), an external project
 under the [Geant4 Software License](https://geant4.web.cern.ch/download/license).
-DetWeave's MIT license does not relicense Geant4, DD4hep or ROOT software.
+DetWeave's license does not relicense Geant4, DD4hep or ROOT software.

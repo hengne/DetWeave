@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "Please cite DetWeave in public work that materially uses this software; retain attribution as required by LICENSE."
+type: software
+title: "DetWeave: Conversation-driven detector geometry modelling and validation"
+version: 0.2.0
+date-released: '2026-11-06'
+authors:
+  - family-names: Li
+    given-names: Hengne
+    affiliation: South China Normal University
+    email: Hengne.Li@m.scnu.edu.cn
+repository-code: 'https://github.com/hengne/DetWeave'
+url: 'https://github.com/hengne/DetWeave'
+license: LicenseRef-DetWeave-NC-Attribution-1.0
+keywords:
+  - Geant4
+  - DD4hep
+  - GDML
+  - detector geometry
+  - large language models
+abstract: >-
+  DetWeave converts unformatted detector design discussions into evidence-linked
+  geometry drafts, clarification questions, visual previews and deterministic
+  GDML, Geant4 and DD4hep exports. Author: Hengne Li (李衡讷), South China Normal
+  University (华南师范大学). Additional contact: Hengne.Li@cern.ch.

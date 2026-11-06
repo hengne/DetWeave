@@ -1,6 +1,9 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
+const t = (message) => window.DetWeaveI18n?.translate(message) ?? message;
+const locale = () => window.DetWeaveI18n?.language || "zh-CN";
+const countText = (count, singular, plural = singular) => count.toLocaleString(locale()) + " " + t(count === 1 || locale() !== "en" ? singular : plural);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -8,11 +11,18 @@ const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
 const sourceInput = $("source-text");
 const jsonInput = $("model-json");
 const saveKey = "detweave.project.v1";
-const arkCodingBase = "https://ark.cn-beijing.volces.com/api/coding/v3";
-const arkCodingModel = "ark-code-latest";
+const providerCatalog = window.DETWEAVE_PROVIDERS || [];
+const protocolLabels = {
+  openai: "OpenAI / 兼容接口",
+  anthropic: "Anthropic / 兼容接口",
+  gemini: "Google Gemini",
+};
+const localized = (value) => value?.[locale() === "en" ? "en" : "zh"] || value?.en || "";
+const currentPreset = () => providerCatalog.find((preset) => preset.id === $("provider").value);
 const state = {
   model: null, report: null, provenance: null, reviewPending: false,
   view: "3d", selection: null, busy: false, examples: [], jsonCommitted: "",
+  project: null, projects: [],
 };
 const history = [];
 let activeExtraction = null;
@@ -53,7 +63,8 @@ const schemaFailed = (report) => report.checks?.schema === "failed"
 function notify(message, tone = "") {
   const status = $("status");
   status.className = ["status", tone].filter(Boolean).join(" ");
-  status.textContent = message;
+  status.dataset.message = message;
+  status.textContent = t(message);
 }
 
 async function api(path, data, binary = false) {
@@ -93,20 +104,23 @@ function updateControls() {
     examples: !state.examples.length,
   };
   for (const [id, inactive] of Object.entries(disabled)) $(id).disabled = state.busy || inactive;
-  for (const id of ["import", "provider", "base-url", "model-name", "ark-model-select", "api-key", "ark-thinking", "total-timeout"]) $(id).disabled = state.busy;
+  for (const id of ["import", "provider", "base-url", "model-name", "ark-model-select", "api-key", "ark-thinking", "total-timeout",
+    "project-menu", "project-title-input", "project-save", "project-refresh", "project-create-submit", "project-create-cancel"]) {
+    $(id).disabled = state.busy;
+  }
   sourceInput.readOnly = state.busy;
   jsonInput.readOnly = state.busy;
-  $("dirty-label").textContent = dirty ? "有尚未应用的原文修改" : "";
-  $("text-length").textContent = sourceInput.value.length.toLocaleString("zh-CN") + " 字符";
+  $("dirty-label").textContent = dirty ? t("有尚未应用的原文修改") : "";
+  $("text-length").textContent = countText(sourceInput.value.length, "字符");
   const reason = dirty ? "原文已有修改，请提取或同步更新 IR。"
     : jsonDirty() ? "IR 编辑框有未应用的修改。请应用或还原。"
     : state.reviewPending ? "已记录答复，请修改 IR 并验证，或重新提取。"
       : state.report?.ready ? "可导出当前模型。Geant4 与 DD4hep 运行检查未执行。"
         : "几何通过结构、解析几何及证据检查后可导出。";
-  $("export-help").textContent = reason;
-  $("export").title = reason;
-  for (const button of document.querySelectorAll("[data-confirm], [data-question-action]")) {
-    button.disabled = state.busy || (dirty && button.dataset.questionAction !== "extract");
+  $("export-help").textContent = t(reason);
+  $("export").title = t(reason);
+  for (const button of document.querySelectorAll("[data-confirm], [data-question-action], [data-project-prompt], [data-project-run]")) {
+    button.disabled = state.busy || (dirty && (button.dataset.confirm || button.dataset.questionAction === "record"));
   }
 }
 
@@ -145,6 +159,7 @@ function commit({ model, report, provenance = null, text = model?.source_text ||
   state.jsonCommitted = model ? JSON.stringify(model, null, 2) : "";
   jsonInput.value = state.jsonCommitted;
   $("json-error").textContent = "";
+  delete $("json-error").dataset.message;
   if (!model) state.selection = null;
   else if (changedTitle || !selectionExists(state.selection)) {
     state.selection = instances()[0] ? { type: "instance", id: instances()[0].id } : { type: "world", id: "world" };
@@ -180,41 +195,84 @@ function isSelected(item, selection = state.selection) {
   ));
 }
 
-function setProvider(event) {
-  const choice = $("provider").value;
-  const live = choice !== "demo";
-  const ark = choice === "ark-coding";
+function renderProviderMenu() {
+  const menu = $("provider");
+  const previous = menu.value || "demo";
+  menu.replaceChildren(new Option(t("离线演示 · 固定示例"), "demo"));
+  for (const preset of providerCatalog) menu.add(new Option(localized(preset.label), preset.id));
+  for (const [kind, label] of Object.entries(protocolLabels)) menu.add(new Option(t(label), kind));
+  menu.value = [...menu.options].some((option) => option.value === previous) ? previous : "demo";
+}
+
+function renderProviderModels(preset, selected) {
+  const menu = $("ark-model-select");
+  menu.replaceChildren();
+  if (!preset) return;
+  const groups = new Map();
+  for (const model of preset.models || []) {
+    const option = new Option(localized(model.label) || model.id, model.id);
+    if (!model.group) menu.add(option);
+    else {
+      if (!groups.has(model.group)) {
+        const group = document.createElement("optgroup");
+        group.label = model.group;
+        groups.set(model.group, group);
+        menu.append(group);
+      }
+      groups.get(model.group).append(option);
+    }
+  }
+  menu.add(new Option(t("手动输入模型 ID…"), "__custom__"));
+  menu.value = [...menu.options].some((option) => option.value === selected) ? selected : "__custom__";
+}
+
+function setProvider(reset = false) {
+  const preset = currentPreset();
+  const live = $("provider").value !== "demo";
+  const ark = preset?.thinking === "ark";
   const model = $("model-name");
-  if (event || ark) {
-    $("base-url").value = ark ? arkCodingBase : "";
-    model.value = ark ? arkCodingModel : "";
+  if (reset) {
+    $("base-url").value = preset?.base_url || "";
+    model.value = preset?.default_model || "";
     $("api-key").value = "";
     $("ark-thinking").value = "";
   }
-  $("ark-model-select").value = arkCodingModel;
-  $("ark-model-fields").hidden = !ark;
-  $("model-name-label").hidden = ark;
-  model.hidden = ark;
+  renderProviderModels(preset, reset ? preset?.default_model : $("ark-model-select").value || preset?.default_model);
+  const customModel = !preset || $("ark-model-select").value === "__custom__";
+  $("ark-model-fields").hidden = !preset;
+  $("model-name-label").hidden = !customModel;
+  model.hidden = !customModel;
   $("provider-fields").hidden = !live;
   $("ark-thinking-fields").hidden = !ark;
   const privacy = "提取时会将讨论原文发送到所选服务。密钥只保留在当前页面内存中。";
-  if (ark) $("provider-help").textContent =
-    "ark-code-latest 跟随控制台设置；控制台选为 Auto 时自动路由。也可从菜单选择具体模型或手动输入 ID。" + privacy;
-  else $("provider-help").textContent = live ? privacy : "仅匹配内置合成示例，适合离线体验。";
+  $("provider-help").textContent = t(live ? privacy : "仅匹配内置合成示例，适合离线体验。");
+  const help = $("ark-model-help");
+  help.replaceChildren();
+  if (preset) {
+    help.textContent = localized(preset.summary);
+    for (const source of preset.sources || []) {
+      const link = document.createElement("a");
+      link.href = source.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = localized(source.label) + " ↗";
+      help.append(" ", link);
+    }
+  }
   updateThinkingOptions();
 }
 
 function updateThinkingOptions() {
-  const required = $("provider").value === "ark-coding"
+  const required = currentPreset()?.thinking === "ark"
     && ["glm-5.3", "glm-latest", "kimi-k3"].includes($("model-name").value.trim().toLowerCase());
   $("ark-thinking").querySelector('[value="disabled"]').disabled = required;
   if (required && $("ark-thinking").value === "disabled") $("ark-thinking").value = "";
-  $("ark-thinking-help").textContent = required
+  $("ark-thinking-help").textContent = t(required
     ? "该模型默认开启思考，官方说明不支持关闭。已使用默认或开启模式。"
-    : "显式开关需模型支持。接口拒绝时会显示错误。";
+    : "显式开关需模型支持。接口拒绝时会显示错误。");
 }
 
-function selectArkModel() {
+function selectPresetModel() {
   const selected = $("ark-model-select").value;
   const custom = selected === "__custom__";
   $("model-name").hidden = !custom;
@@ -227,16 +285,16 @@ function selectArkModel() {
 function configuredProvider() {
   const choice = $("provider").value;
   if (choice === "demo") return { kind: choice };
-  const ark = choice === "ark-coding";
+  const preset = currentPreset();
   const provider = {
-    kind: ark ? "openai" : choice,
-    base_url: $("base-url").value.trim() || (ark ? arkCodingBase : ""),
+    kind: preset?.kind || choice,
+    base_url: $("base-url").value.trim() || preset?.base_url || "",
     model: $("model-name").value.trim(),
     api_key: $("api-key").value,
     total_timeout_s: $("total-timeout").value === "" ? 600 : Number($("total-timeout").value),
   };
   const thinking = $("ark-thinking").value;
-  if (ark && ["enabled", "disabled"].includes(thinking)) provider.thinking = thinking;
+  if (preset?.thinking === "ark" && ["enabled", "disabled"].includes(thinking)) provider.thinking = thinking;
   return provider;
 }
 
@@ -301,6 +359,8 @@ async function extractGeometry(text) {
     }
     finishExtraction(operation, "failed", error.message + " 保留当前模型。", error.code);
     throw error;
+  } finally {
+    if (operation.projectId) refreshProjectAfterRun(operation.projectId, operation.controller.signal.aborted);
   }
 }
 
@@ -317,11 +377,13 @@ function clearRunMonitor() {
   }
   $("run-log").replaceChildren();
   $("run-log-truncated").hidden = true;
-  $("run-stage").textContent = "待运行";
+  $("run-stage").dataset.label = "待运行";
+  $("run-stage").textContent = t("待运行");
   $("run-stage").dataset.state = "idle";
   $("run-elapsed").textContent = "—";
   $("run-activity").textContent = "—";
-  $("run-message").textContent = "开始提取后会在这里显示进度。";
+  delete $("run-activity").dataset.label;
+  setRunMessage("开始提取后会在这里显示进度。");
 }
 
 function durationLabel(seconds) {
@@ -336,14 +398,21 @@ function updateRunClock(operation) {
     : operation.providerAt == null ? "尚未收到"
       : durationLabel((now - operation.providerAt) / 1000);
   if ($("run-elapsed").textContent !== elapsed) $("run-elapsed").textContent = elapsed;
-  if ($("run-activity").textContent !== activity) $("run-activity").textContent = activity;
+  $("run-activity").dataset.label = activity;
+  if ($("run-activity").textContent !== t(activity)) $("run-activity").textContent = t(activity);
 }
 
 function setRunStage(stage, tone = "active", message) {
   const label = $("run-stage");
-  label.textContent = runStages[stage] || "运行中";
+  label.dataset.label = runStages[stage] || "运行中";
+  label.textContent = t(label.dataset.label);
   label.dataset.state = tone;
-  if (message) $("run-message").textContent = message.slice(0, 1600);
+  if (message) setRunMessage(message.slice(0, 1600));
+}
+
+function setRunMessage(message) {
+  $("run-message").dataset.message = message;
+  $("run-message").textContent = t(message);
 }
 
 function logRunEvent(operation, message, { tone = "", elapsed_s } = {}) {
@@ -353,7 +422,10 @@ function logRunEvent(operation, message, { tone = "", elapsed_s } = {}) {
   const stamp = document.createElement("time");
   stamp.textContent = durationLabel(Number.isFinite(elapsed_s) ? elapsed_s : (performance.now() - operation.startedAt) / 1000);
   item.className = tone;
-  item.append(stamp, document.createTextNode(message.slice(0, 1000)));
+  const content = document.createElement("span");
+  content.dataset.message = message.slice(0, 1000);
+  content.textContent = t(content.dataset.message);
+  item.append(stamp, content);
   log.append(item);
   if (log.children.length > 100) {
     log.firstElementChild.remove();
@@ -365,7 +437,7 @@ function logRunEvent(operation, message, { tone = "", elapsed_s } = {}) {
 function beginExtraction(demo) {
   const operation = {
     controller: new AbortController(), startedAt: performance.now(), demo,
-    providerAt: null, received: new Set(), buffers: {},
+    providerAt: null, received: new Set(), buffers: {}, projectId: state.project?.id,
   };
   for (const channel of ["reasoning", "output"]) {
     const node = document.createTextNode("");
@@ -461,7 +533,7 @@ async function streamExtraction(text, provider, operation) {
     response = await fetch("/api/extract/stream", {
       method: "POST", cache: "no-store", signal,
       headers: { "Content-Type": "application/json", "X-DetWeave": "1", Accept: "application/x-ndjson" },
-      body: JSON.stringify({ text, provider }),
+      body: JSON.stringify({ text, provider, project_id: operation.projectId }),
     });
   } catch (error) {
     if (signal.aborted) throw error;
@@ -513,15 +585,15 @@ function nodeButton(type, id, meta, symbol, label = id) {
   const active = state.selection?.type === type && state.selection.id === id;
   return '<button type="button" data-type="' + esc(type) + '" data-id="' + esc(id)
     + '" aria-pressed="' + active + '"><span class="node-dot" aria-hidden="true">' + symbol
-    + '</span><span class="mono">' + esc(label) + '</span><small>' + esc(meta) + '</small></button>';
+    + '</span><span class="mono">' + esc(label) + '</span><small>' + esc(t(meta)) + '</small></button>';
 }
 
 function renderTree() {
   const tree = $("tree");
   const model = state.model;
-  $("counts").textContent = instances().length + " 实例";
+  $("counts").textContent = countText(instances().length, "实例", "实例数");
   if (!model) {
-    tree.innerHTML = '<p class="empty-text">当前没有几何模型。</p>';
+    tree.innerHTML = '<p class="empty-text">' + esc(t("当前没有几何模型。")) + '</p>';
     return;
   }
   const children = new Map();
@@ -539,7 +611,7 @@ function renderTree() {
   const definitions = model.volumes.map((item) => '<li>' + nodeButton("volume", item.id, item.shape.type, "□") + "</li>").join("");
   tree.innerHTML = '<ul><li>' + nodeButton("world", "world", "根节点", "◎")
     + branches("world") + (unexpanded ? "<ul>" + unexpanded + "</ul>" : "") + '</li></ul>'
-    + (definitions ? '<p class="tree-divider">体积定义 · ' + model.volumes.length + '</p><ul>' + definitions + "</ul>" : "");
+    + (definitions ? '<p class="tree-divider">' + esc(t("体积定义")) + ' · ' + model.volumes.length + '</p><ul>' + definitions + "</ul>" : "");
 }
 
 function fieldsFor(model) {
@@ -571,13 +643,13 @@ function evidenceCards(prefixes) {
       const validQuote = quotes.length > 0 && quotes.every((quote) => quote.trim() && model.source_text.includes(quote));
       const acceptable = validQuote && ["stated", "confirmed"].includes(entry.status);
       const kind = entry?.status || "missing";
-      return '<details class="evidence"' + (acceptable ? "" : " open") + '><summary>' + esc(field.label)
-        + ' <span class="badge ' + esc(kind) + '">' + esc(statusNames[kind]) + "</span></summary>"
+      return '<details class="evidence"' + (acceptable ? "" : " open") + '><summary>' + esc(t(field.label))
+        + ' <span class="badge ' + esc(kind) + '">' + esc(t(statusNames[kind])) + "</span></summary>"
         + '<p class="issue-path">' + esc(path) + "</p>"
-        + (hasQuote ? quotes.map((quote) => '<blockquote>' + esc(quote) + '</blockquote>').join("") : '<p class="muted">暂无原文引句。</p>')
+        + (hasQuote ? quotes.map((quote) => '<blockquote>' + esc(quote) + '</blockquote>').join("") : '<p class="muted">' + esc(t("暂无原文引句。")) + '</p>')
         + (entry?.note ? '<p class="muted">' + esc(entry.note) + '</p>' : "")
-        + (hasQuote && !validQuote ? '<p class="error">引句未出现在原文中。</p>' : "")
-        + (acceptable ? "" : '<button type="button" class="text-button" data-confirm="' + esc(path) + '">记录此值已确认</button>')
+        + (hasQuote && !validQuote ? '<p class="error">' + esc(t("引句未出现在原文中。")) + '</p>' : "")
+        + (acceptable ? "" : '<button type="button" class="text-button" data-confirm="' + esc(path) + '">' + esc(t("记录此值已确认")) + '</button>')
         + "</details>";
     }).join("");
 }
@@ -588,7 +660,7 @@ function renderDetails() {
   const selection = state.selection;
   if (!selectionExists(selection)) {
     $("selection-kind").textContent = "—";
-    pane.innerHTML = '<p class="empty-text">选中结构或投影中的对象，查看尺寸、材料和证据。</p>';
+    pane.innerHTML = '<p class="empty-text">' + esc(t("选中结构或投影中的对象，查看尺寸、材料和证据。")) + '</p>';
     return;
   }
   const world = selection.type === "world";
@@ -615,9 +687,9 @@ function renderDetails() {
     if (placement.repeat) values.push(["重复 / 步进", placement.repeat.count + " / (" + vector(placement.repeat.step_mm) + ") mm"]);
   }
   const kinds = { world: "世界", instance: "实例", volume: "定义", placement: "放置" };
-  $("selection-kind").textContent = kinds[selection.type];
+  $("selection-kind").textContent = t(kinds[selection.type]);
   pane.innerHTML = '<h4>' + esc(selection.id) + '</h4><dl class="param-list">'
-    + values.map(([key, value]) => "<dt>" + esc(key) + "</dt><dd>" + esc(value) + "</dd>").join("")
+    + values.map(([key, value]) => "<dt>" + esc(t(key)) + "</dt><dd>" + esc(value) + "</dd>").join("")
     + "</dl>" + evidenceCards(prefixes);
 }
 
@@ -632,54 +704,54 @@ const issueNames = {
 function renderIssues() {
   const report = state.report;
   const pane = $("issues");
-  $("issue-count").textContent = report ? report.issues.length + " 项" : "—";
+  $("issue-count").textContent = report ? countText(report.issues.length, "项") : "—";
   if (!report) {
-    pane.innerHTML = '<p class="empty-text">提取或导入模型后显示验证结果。</p>';
+    pane.innerHTML = '<p class="empty-text">' + esc(t("提取或导入模型后显示验证结果。")) + '</p>';
     return;
   }
   const questions = state.model.questions.map((question, index) =>
-    '<article class="issue"><span class="badge blocker">待澄清</span> <span class="issue-path">'
+    '<article class="issue"><span class="badge blocker">' + esc(t("待澄清")) + '</span> <span class="issue-path">'
     + esc(question.id) + '</span><p>' + esc(question.question) + '</p>'
     + (question.targets.length ? '<p class="issue-path">' + esc(question.targets.join(" · ")) + '</p>' : "")
-    + '<textarea id="answer-' + index + '" maxlength="2000" aria-label="答复 ' + esc(question.id)
-    + '" placeholder="填写设计方的答复"></textarea><div class="issue-actions">'
-    + '<button type="button" class="button compact" data-question-action="extract" data-index="' + index + '">补充并提取</button>'
+    + '<textarea id="answer-' + index + '" maxlength="2000" aria-label="' + esc(t("答复")) + ' ' + esc(question.id)
+    + '" placeholder="' + esc(t("填写设计方的答复")) + '"></textarea><div class="issue-actions">'
+    + '<button type="button" class="button compact" data-question-action="extract" data-index="' + index + '">' + esc(t("补充并提取")) + '</button>'
     + '<button type="button" class="button compact quiet" data-question-action="record" data-index="' + index
-    + '" title="记录答复并移出问题。仍需修改 IR 或重新提取。">记录答复</button></div></article>');
+    + '" title="' + esc(t("记录答复并移出问题。仍需修改 IR 或重新提取。")) + '">' + esc(t("记录答复")) + '</button></div></article>');
   const issues = report.issues.filter((item) => item.code !== "clarification").map((item) =>
     '<article class="issue"><span class="badge ' + esc(item.level) + '">'
-    + esc(issueNames[item.code] || item.code) + '</span> <span class="issue-path">' + esc(item.path)
+    + esc(t(issueNames[item.code] || item.code)) + '</span> <span class="issue-path">' + esc(item.path)
     + '</span><p>' + esc(item.message) + '</p></article>');
-  const notes = state.model.notes.map((note) => '<article class="issue"><span class="badge">模型备注</span><p>' + esc(note) + '</p></article>');
+  const notes = state.model.notes.map((note) => '<article class="issue"><span class="badge">' + esc(t("模型备注")) + '</span><p>' + esc(note) + '</p></article>');
   pane.innerHTML = [...questions, ...issues, ...notes].join("")
-    || '<p class="empty-text">当前检查没有发现导出阻塞项。</p>';
+    || '<p class="empty-text">' + esc(t("当前检查没有发现导出阻塞项。")) + '</p>';
 }
 
 function renderSummary() {
   const { model, report, provenance } = state;
-  $("geometry-subtitle").textContent = model?.title || "等待设计模型";
+  $("geometry-subtitle").textContent = model?.title || t("等待设计模型");
   const stage = $("stage");
   const ready = report?.ready && !state.reviewPending && !isDirty() && !jsonDirty();
   stage.className = "stage " + (report ? (ready ? "ready" : "draft") : "neutral");
-  stage.textContent = report ? (ready ? "可导出" : "草稿") : "待提取";
+  stage.textContent = t(report ? (ready ? "可导出" : "草稿") : "待提取");
   const names = { schema: "结构", analytic_geometry: "解析几何", evidence: "证据", geant4: "Geant4", dd4hep: "DD4hep" };
   const checks = { passed: "通过", failed: "有错误", needs_review: "待审", not_run: "未运行" };
   $("check-strip").innerHTML = Object.entries(names).map(([key, label]) => {
     const check = report?.checks?.[key] || "not_run";
-    return '<span>' + label + ' <b class="' + esc(check) + '">' + esc(checks[check] || check) + "</b></span>";
+    return '<span>' + esc(t(label)) + ' <b class="' + esc(check) + '">' + esc(t(checks[check] || check)) + "</b></span>";
   }).join("");
   $("check-strip").title = report?.scope || "";
   const materials = new Set(instances().map((item) => item.material));
   $("legend").innerHTML = [...materials].map((item) =>
     '<span><svg width="8" height="8" aria-hidden="true"><rect width="8" height="8" rx="2" fill="'
     + materialColor(item) + '"/></svg>' + esc(item) + "</span>").join("")
-    || '<span class="muted">材料图例</span>';
+    || '<span class="muted">' + esc(t("材料图例")) + '</span>';
   const metadata = $("provenance");
   metadata.hidden = !provenance;
   metadata.textContent = provenance ? [
-    "提取记录", provenance.provider, provenance.model, provenance.response_model && "接口返回 " + provenance.response_model, provenance.prompt_version && "Prompt " + provenance.prompt_version,
+    t("提取记录"), provenance.provider, provenance.model, provenance.response_model && t("接口返回") + " " + provenance.response_model, provenance.prompt_version && "Prompt " + provenance.prompt_version,
     provenance.duration_s != null && number(provenance.duration_s) + " s",
-    provenance.source_sha256 && "原始提取输入 SHA-256 " + provenance.source_sha256,
+    provenance.source_sha256 && t("原始提取输入 SHA-256") + " " + provenance.source_sha256,
   ].filter(Boolean).join(" · ") : "";
 }
 
@@ -791,7 +863,7 @@ function drawingSVG(plane, interactive = false) {
     'fill="none" stroke="#738da9" stroke-dasharray="6 5" stroke-width="1.2"') : "";
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + width + ' ' + height
     + '" role="' + (interactive ? "group" : "img") + '" aria-label="' + h + v
-    + ' 几何投影，单位毫米"><title>' + esc(model.title) + ' / ' + h + v
+    + ' ' + esc(t("几何投影，单位毫米")) + '"><title>' + esc(model.title) + ' / ' + h + v
     + '</title><rect width="100%" height="100%" fill="#0a1526"/><g font-family="monospace" font-size="10" fill="#9aafca">'
     + grid.join("") + '<text x="714" y="359">' + h + ' [mm]</text><text x="25" y="27">' + v
     + ' [mm]</text>' + world + shapes.join("") + markers + "</g></svg>";
@@ -805,11 +877,11 @@ function renderDrawing() {
   $("drawing").hidden = in3D;
   $("view-empty").hidden = hasInstances;
   $("view-empty").querySelector("p").textContent = state.model
-    ? "没有可预览的放置，请查看验证结果。" : "加载示例或提取草稿，开始查看几何";
+    ? t("没有可预览的放置，请查看验证结果。") : t("加载示例或提取草稿，开始查看几何");
   $("view-mode").textContent = in3D ? "3D / ORTHOGRAPHIC" : view.toUpperCase() + " / PROJECTION";
-  $("view-help").textContent = in3D ? "拖动旋转 · 滚动缩放" : "选中对象 · 查看尺寸";
+  $("view-help").textContent = t(in3D ? "拖动旋转 · 滚动缩放" : "选中对象 · 查看尺寸");
   $("drawing").innerHTML = in3D ? "" : drawingSVG(view, true);
-  $("svg-export").title = "下载 " + (in3D ? "XZ" : view.toUpperCase()) + " 投影";
+  $("svg-export").title = t("下载") + " " + (in3D ? "XZ" : view.toUpperCase()) + " " + t("投影");
   for (const button of document.querySelectorAll("[data-view]")) {
     button.setAttribute("aria-pressed", String(button.dataset.view === view));
   }
@@ -1055,8 +1127,15 @@ const scene = installScene($("scene"), () => ({
   selected: isSelected, colors,
 }), (id) => select("instance", id));
 
-function download(content, type, filename) {
+async function download(content, type, filename) {
   const blob = content instanceof Blob ? content : new Blob([content], { type });
+  if (typeof window.DetWeaveNativeSave === "function") {
+    try {
+      if (await window.DetWeaveNativeSave(blob, filename)) return;
+    } catch {
+      notify("原生保存失败，正在尝试浏览器下载。", "error");
+    }
+  }
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.href = url;
@@ -1072,7 +1151,7 @@ function exportPreview() {
     items: instances(), world: state.model.world, colors, showWorld: $("world").checked,
   }).replace(/</g, "\\u003c");
   const title = esc(state.model.title);
-  const html = '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
+  const html = '<!doctype html><html lang="' + locale() + '"><head><meta charset="utf-8">'
     + '<meta name="viewport" content="width=device-width,initial-scale=1"><title>' + title + ' · DetWeave</title>'
     + '<style>body{margin:0;background:#0a1526;color:#e5edf8;font:14px system-ui,sans-serif}'
     + 'main{height:100dvh;min-height:300px;display:grid;grid-template-rows:auto minmax(0,1fr) auto}'
@@ -1080,10 +1159,10 @@ function exportPreview() {
     + 'p{margin:6px 0;color:#b7c9e0}button{background:#1a3048;border:1px solid #496283;color:#fff;border-radius:6px;'
     + 'padding:5px 9px;margin-right:10px}canvas{width:100%;height:100%;cursor:grab;touch-action:none}'
     + 'canvas:focus-visible{outline:2px solid #5ce0ca;outline-offset:-2px}</style></head><body><main><header>'
-    + '<h1>' + title + ' · 离线 3D</h1><p>几何可视化 · 毫米 · Geant4 / DD4hep 运行验证未执行</p>'
-    + '<button type="button" id="reset">复位视角</button><label><input id="world" type="checkbox"> World</label>'
-    + '</header><canvas id="scene" tabindex="0" aria-label="探测器三维预览，方向键旋转，加减键缩放"></canvas>'
-    + '<footer><span id="selection">拖动或方向键旋转 · 滚轮或加减键缩放 · 点击选中对象</span></footer></main><script>'
+    + '<h1>' + title + ' · ' + esc(t("离线 3D")) + '</h1><p>' + esc(t("几何可视化 · 毫米 · Geant4 / DD4hep 运行验证未执行")) + '</p>'
+    + '<button type="button" id="reset">' + esc(t("复位视角")) + '</button><label><input id="world" type="checkbox"> World</label>'
+    + '</header><canvas id="scene" tabindex="0" aria-label="' + esc(t("探测器三维预览，方向键旋转，加减键缩放")) + '"></canvas>'
+    + '<footer><span id="selection">' + esc(t("拖动或方向键旋转 · 滚轮或加减键缩放 · 点击选中对象")) + '</span></footer></main><script>'
     + '"use strict";const payload=' + payload + ';const canvas=document.getElementById("scene");'
     + 'const world=document.getElementById("world");world.checked=payload.showWorld;let selection=null;'
     + 'const scene=(' + installScene.toString() + ')(canvas,()=>({...payload,showWorld:world.checked,'
@@ -1099,6 +1178,141 @@ function projectDocument() {
     format: saveKey, text: sourceInput.value, model: state.model, provenance: state.provenance,
     review_pending: state.reviewPending,
   };
+}
+
+const projectURL = (id) => "/api/projects/" + encodeURIComponent(id);
+
+function setProjectMessage(message) {
+  $("project-message").dataset.message = message;
+  $("project-message").textContent = t(message);
+}
+
+function renderProjectMenu() {
+  const menu = $("project-menu");
+  menu.replaceChildren(new Option(t("临时工作区"), ""), new Option(t("新建项目…"), "__new__"));
+  for (const project of state.projects) menu.add(new Option(project.title, project.id));
+  menu.value = state.project?.id || "";
+}
+
+function projectTime(value) {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime()) ? date.toLocaleString(locale()) : "—";
+}
+
+function renderProjectHistory() {
+  const project = state.project;
+  for (const id of ["active-project-title", "project-save", "project-history"]) $(id).hidden = !project;
+  if (!project) return;
+  const prompts = project.prompts || [];
+  const runs = project.runs || [];
+  const exports = project.exports || [];
+  const versions = new Map(prompts.map((prompt, index) => [prompt.id, index + 1]));
+  $("project-history-count").textContent = countText(prompts.length, "个版本", "版本数") + " · "
+    + countText(runs.length, "次运行", "运行数");
+  $("project-folder").textContent = project.folder;
+  $("project-prompts").innerHTML = [...prompts].reverse().map((prompt) =>
+    '<details class="project-entry"><summary>' + esc(t("版本")) + ' ' + versions.get(prompt.id) + ' · '
+      + esc(projectTime(prompt.created_at)) + '</summary><pre tabindex="0">' + esc(prompt.text) + '</pre>'
+      + '<button type="button" class="button compact" data-project-prompt="' + esc(prompt.id) + '">'
+      + esc(t("载入此版本")) + '</button></details>').join("")
+    || '<p class="fine-print">' + esc(t("尚无已保存的讨论版本。")) + '</p>';
+  const runStatus = { running: "运行中", succeeded: "已完成", failed: "失败", cancelled: "已取消", interrupted: "已中断" };
+  $("project-runs").innerHTML = [
+    ...runs.map((run) => '<article class="project-entry"><strong>' + esc(t(runStatus[run.status] || run.status))
+      + '</strong> · ' + esc(projectTime(run.created_at))
+      + '<p class="muted">' + esc(t("版本")) + ' ' + esc(versions.get(run.prompt_id) || "—")
+      + (run.provider?.model ? ' · ' + esc(run.provider.model) : '')
+      + (run.error_code ? ' · ' + esc(run.error_code) : '') + '</p>'
+      + (run.status === "succeeded" ? '<button type="button" class="button compact" data-project-run="' + esc(run.id) + '">'
+        + esc(t("载入此几何")) + '</button>' : '') + '</article>'),
+    ...exports.map((item) => '<article class="project-entry"><strong>' + esc(t("已导出")) + '</strong> · '
+      + esc(projectTime(item.created_at)) + '</article>'),
+  ].join("") || '<p class="fine-print">' + esc(t("尚无提取或导出记录。")) + '</p>';
+}
+
+function updateProjectDetails(project) {
+  if (state.project?.id !== project.id) return;
+  state.project = project;
+  const index = state.projects.findIndex((item) => item.id === project.id);
+  const { id, title, updated_at, folder } = project;
+  if (index >= 0) state.projects.splice(index, 1);
+  state.projects.unshift({ id, title, updated_at, folder });
+  renderProjectMenu();
+  renderProjectHistory();
+  updateControls();
+}
+
+async function refreshProjectIndex() {
+  const result = await api("/api/projects");
+  state.projects = result.projects || [];
+  renderProjectMenu();
+}
+
+let projectRefreshSequence = 0;
+async function refreshProjectAfterRun(id, waitForCancellation = false) {
+  const sequence = ++projectRefreshSequence;
+  const delays = waitForCancellation ? [0, 1000, 1800] : [0];
+  try {
+    for (const delay of delays) {
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+      if (state.project?.id !== id || sequence !== projectRefreshSequence) return;
+      const project = await api(projectURL(id));
+      if (sequence !== projectRefreshSequence) return;
+      updateProjectDetails(project);
+      if (project.runs[0]?.status !== "running") return;
+    }
+  } catch {
+    if (state.project?.id === id && sequence === projectRefreshSequence) {
+      setProjectMessage("未能刷新项目记录。可以手动刷新。");
+    }
+  }
+}
+
+function currentProjectDraft() {
+  const { text, model, provenance, review_pending } = projectDocument();
+  const draft = { text, model, provenance, review_pending };
+  if (jsonDirty()) draft.json_text = jsonInput.value;
+  return draft;
+}
+
+function discardProjectEdits() {
+  const project = state.project;
+  if (!project) return true;
+  const saved = { ...project.draft, provenance: publicProvenance(project.draft.provenance) };
+  const unchanged = sameValue(currentProjectDraft(), saved) && $("project-title-input").value.trim() === project.title;
+  return unchanged || window.confirm(t("当前项目有未保存的修改。切换项目并放弃这些修改？"));
+}
+
+async function activateLocalProject(project) {
+  if (project) await openProject(project.draft, false);
+  else commit({ model: null, report: null }, false);
+  projectRefreshSequence++;
+  state.project = project;
+  history.length = 0;
+  $("project-history").open = false;
+  $("examples").value = "";
+  clearRunMonitor();
+  if (project) {
+    $("project-title-input").value = project.title;
+    if (typeof project.draft.json_text === "string") jsonInput.value = project.draft.json_text;
+    updateProjectDetails(project);
+    setProjectMessage("已打开本地项目。");
+  } else {
+    renderProjectMenu();
+    renderProjectHistory();
+    setProjectMessage("创建项目后，讨论版本与提取记录保存到本机目录。");
+  }
+  render();
+}
+
+function projectAction(label, work) {
+  return run(label, async () => {
+    setProjectMessage(label);
+    try { await work(); } catch (error) {
+      setProjectMessage(error.message);
+      throw error;
+    }
+  });
 }
 
 async function openProject(documentValue, saveUndo = true) {
@@ -1121,8 +1335,8 @@ function refreshLocalSave() {
   try { stored = localStorage.getItem(saveKey) !== null; } catch { /* Storage can be disabled. */ }
   $("forget-local").hidden = !stored;
   $("local-save-state").textContent = stored
-    ? "本浏览器已保存一份项目。清空工作台后仍可单独删除该副本。"
-    : "浏览器默认不保存讨论内容。项目 JSON 包含讨论原文。";
+    ? t("本浏览器已保存一份项目。清空工作台后仍可单独删除该副本。")
+    : t("浏览器默认不保存讨论内容。项目 JSON 包含讨论原文。");
 }
 
 function sameValue(a, b) {
@@ -1142,7 +1356,7 @@ function markChangedEvidence(model, previous) {
     if (entry && before.has(path) && !sameValue(before.get(path).value, field.value)
       && sameValue(previous.evidence[path], entry)) {
       model.evidence[path] = {
-        status: "unresolved", quote: entry.quote, note: "参数已修改，需重新核对该依据。",
+        status: "unresolved", quote: entry.quote, note: t("参数已修改，需重新核对该依据。"),
       };
       changed = true;
     }
@@ -1171,15 +1385,15 @@ async function confirmEvidence(path) {
   if (isDirty()) throw new Error("请先提取或应用已修改的原文。");
   const field = fieldsFor(state.model).get(path);
   if (!field) throw new Error("没有找到该参数。");
-  const line = "用户确认 [" + path + "] = " + JSON.stringify(field.value);
-  if (!window.confirm("确认采用以下几何参数，并将这条确认附到原文？\n\n" + line)) {
+  const line = t("用户确认") + " [" + path + "] = " + JSON.stringify(field.value);
+  if (!window.confirm(t("确认采用以下几何参数，并将这条确认附到原文？") + "\n\n" + line)) {
     notify("确认已取消。");
     return;
   }
   const model = clone(state.model);
   model.source_text = appendSource(model.source_text, line);
   model.evidence[path] = {
-    status: "confirmed", quote: line, note: "用户在 DetWeave 参数面板确认了此值。",
+    status: "confirmed", quote: line, note: t("用户在 DetWeave 参数面板确认了此值。"),
   };
   const report = await validated(model);
   commit({ model, report, provenance: state.provenance, reviewPending: state.reviewPending });
@@ -1191,7 +1405,7 @@ async function answerQuestion(index, action) {
   const answer = $("answer-" + index).value.trim();
   if (!answer) throw new Error("请填写该问题的答复。");
   if (action === "record" && isDirty()) throw new Error("请先处理已修改的原文。");
-  const line = "补充答复 [" + question.id + "]\n问题：" + question.question + "\n答复：" + answer;
+  const line = t("补充答复") + " [" + question.id + "]\n" + t("问题：") + question.question + "\n" + t("答复：") + answer;
   const text = appendSource(sourceInput.value, line);
   if (action === "extract") {
     remember();
@@ -1201,7 +1415,7 @@ async function answerQuestion(index, action) {
     if (await extractGeometry(text)) history.pop();
     return;
   }
-  if (!window.confirm("记录此答复并移出待澄清项？后续需要应用 IR 修改或重新提取。")) {
+  if (!window.confirm(t("记录此答复并移出待澄清项？后续需要应用 IR 修改或重新提取。"))) {
     notify("记录已取消。");
     return;
   }
@@ -1211,7 +1425,7 @@ async function answerQuestion(index, action) {
   const fields = fieldsFor(model);
   for (const target of question.targets) {
     if (fields.has(target)) model.evidence[target] = {
-      status: "unresolved", quote: "", note: "已补充答复，请将答复应用到此参数并复核。",
+      status: "unresolved", quote: "", note: t("已补充答复，请将答复应用到此参数并复核。"),
     };
   }
   const report = await validated(model);
@@ -1227,7 +1441,10 @@ async function loadExample(example, saveUndo = true) {
 }
 
 async function initialize() {
-  setProvider();
+  renderProviderMenu();
+  setProvider(true);
+  renderProjectMenu();
+  refreshProjectIndex().catch(() => setProjectMessage("未能读取本地项目列表。"));
   refreshLocalSave();
   render();
   await run("正在加载内置示例…", async () => {
@@ -1250,8 +1467,105 @@ async function initialize() {
   });
 }
 
-$("provider").addEventListener("change", setProvider);
-$("ark-model-select").addEventListener("change", selectArkModel);
+$("language").addEventListener("change", () => {
+  const pendingAnswers = [...document.querySelectorAll("#issues textarea")].map((input) => [input.id, input.value]);
+  window.DetWeaveI18n?.apply($("language").value, true);
+  renderProviderMenu();
+  setProvider();
+  renderProjectMenu();
+  renderProjectHistory();
+  refreshLocalSave();
+  render();
+  for (const [id, value] of pendingAnswers) if ($(id)) $(id).value = value;
+  for (const id of ["status", "json-error", "project-message", "run-stage", "run-message", "run-activity"]) {
+    const node = $(id);
+    const text = node.dataset.message || node.dataset.label;
+    if (text) node.textContent = t(text);
+  }
+  for (const entry of $("run-log").querySelectorAll("[data-message]")) entry.textContent = t(entry.dataset.message);
+});
+
+$("about-open").addEventListener("click", () => $("about-dialog").showModal());
+$("project-menu").addEventListener("change", (event) => {
+  const selected = event.target.value;
+  event.target.value = state.project?.id || "";
+  if (!discardProjectEdits()) return;
+  if (selected === "__new__") {
+    $("project-create-name").value = "";
+    $("project-create-error").textContent = "";
+    $("project-create-dialog").showModal();
+    $("project-create-name").focus();
+    return;
+  }
+  projectAction("正在打开本地项目…", async () => activateLocalProject(selected ? await api(projectURL(selected)) : null));
+});
+$("project-create-cancel").addEventListener("click", () => $("project-create-dialog").close());
+$("project-create-dialog").addEventListener("cancel", (event) => { if (state.busy) event.preventDefault(); });
+$("project-create-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const title = $("project-create-name").value.trim();
+  if (!title) {
+    $("project-create-error").textContent = t("请输入项目标题。");
+    return;
+  }
+  projectAction("正在创建本地项目…", async () => {
+    try {
+      const project = await api("/api/projects", { title });
+      await activateLocalProject(project);
+      $("project-create-dialog").close();
+      setProjectMessage("已创建本地项目。");
+    } catch (error) {
+      $("project-create-error").textContent = t(error.message);
+      throw error;
+    }
+  });
+});
+$("project-save").addEventListener("click", () => projectAction("正在保存本地项目…", async () => {
+  const title = $("project-title-input").value.trim();
+  if (!title) throw new Error("请输入项目标题。");
+  projectRefreshSequence++;
+  const project = await api(projectURL(state.project.id), { title, draft: currentProjectDraft() });
+  $("project-title-input").value = project.title;
+  updateProjectDetails(project);
+  setProjectMessage("已保存本地项目。");
+}));
+$("project-refresh").addEventListener("click", () => projectAction("正在刷新项目记录…", async () => {
+  projectRefreshSequence++;
+  updateProjectDetails(await api(projectURL(state.project.id)));
+  setProjectMessage("已刷新本地项目记录。");
+}));
+$("project-copy-path").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(state.project.folder);
+    setProjectMessage("已复制项目目录。");
+  } catch {
+    setProjectMessage("无法自动复制。可选中目录路径并手动复制。");
+  }
+});
+$("project-prompts").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-project-prompt]");
+  const prompt = state.project?.prompts.find((item) => item.id === button?.dataset.projectPrompt);
+  if (!prompt || state.busy) return;
+  remember();
+  sourceInput.value = prompt.text;
+  renderSummary();
+  updateControls();
+  setProjectMessage("已将历史讨论版本载入原文。");
+});
+$("project-runs").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-project-run]");
+  if (!button) return;
+  projectAction("正在载入历史几何…", async () => {
+    const run = await api(projectURL(state.project.id) + "/runs/" + encodeURIComponent(button.dataset.projectRun));
+    if (!run.result?.model) throw new Error("此运行没有可载入的几何。");
+    const report = await validated(run.result.model);
+    commit({ model: run.result.model, report, provenance: publicProvenance(run.result.provenance) });
+    setProjectMessage("已载入历史几何。可保存为当前项目草稿。");
+  });
+});
+
+$("provider").addEventListener("change", () => setProvider(true));
+$("ark-model-select").addEventListener("change", selectPresetModel);
 $("model-name").addEventListener("input", updateThinkingOptions);
 $("run-toggle").addEventListener("click", () => toggleRunMonitor($("run-monitor").hidden));
 function closeRunMonitor() {
@@ -1265,7 +1579,7 @@ $("run-monitor").addEventListener("keydown", (event) => {
 $("run-cancel").addEventListener("click", () => {
   if (!activeExtraction) return;
   $("run-cancel").disabled = true;
-  $("run-message").textContent = "正在取消提取…";
+  setRunMessage("正在取消提取…");
   $("run-close").focus({ preventScroll: true });
   activeExtraction.controller.abort();
 });
@@ -1326,13 +1640,15 @@ $("validate").addEventListener("click", () => run("正在验证模型…", async
 $("apply-json").addEventListener("click", () => run("正在验证修改后的 IR…", async () => {
   $("json-error").textContent = "";
   try { await applyModelJSON(); } catch (error) {
-    $("json-error").textContent = error.message;
+    $("json-error").dataset.message = error.message;
+    $("json-error").textContent = t(error.message);
     throw error;
   }
 }));
 $("reset-json").addEventListener("click", () => {
   jsonInput.value = state.jsonCommitted;
   $("json-error").textContent = "";
+  delete $("json-error").dataset.message;
   renderSummary();
   updateControls();
 });
@@ -1379,8 +1695,10 @@ $("import-file").addEventListener("change", (event) => {
   });
 });
 $("export").addEventListener("click", () => run("正在生成几何包…", async () => {
-  const blob = await api("/api/export", { model: state.model, provenance: publicProvenance(state.provenance) }, true);
-  download(blob, "application/zip", "detweave-geometry.zip");
+  const projectId = state.project?.id;
+  const blob = await api("/api/export", { model: state.model, provenance: publicProvenance(state.provenance), project_id: projectId }, true);
+  await download(blob, "application/zip", "detweave-geometry.zip");
+  if (projectId) refreshProjectAfterRun(projectId);
   notify("几何包已下载。", "success");
 }));
 

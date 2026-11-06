@@ -13,11 +13,21 @@ from . import __version__
 from .model import SCHEMA, validate
 from .providers import extract, ProviderError
 from .exporters import project_zip, svg
+from .projects import ProjectNotFound, ProjectStore, persisted_result, public_provenance
 from .streaming import RunControl, RunError, timeouts
 
 ROOT=Path(__file__).parent
 MAX_BODY=2_000_000
 SLOTS=threading.BoundedSemaphore(3)
+STORAGE_ERROR = dict(error="Could not read or save the local project. Check the project folder and available disk space.",
+                     code="project_storage_error")
+STATIC = {
+    "index.html": "text/html; charset=utf-8",
+    "app.js": "text/javascript; charset=utf-8",
+    "i18n.js": "text/javascript; charset=utf-8",
+    "providers-catalog.js": "text/javascript; charset=utf-8",
+    "style.css": "text/css; charset=utf-8",
+}
 
 
 def examples():
@@ -79,13 +89,77 @@ class Handler(BaseHTTPRequestHandler):
         if path=="/api/schema":self.send(200,SCHEMA)
         elif path=="/api/examples":self.send(200,examples())
         elif path=="/api/health":self.send(200,dict(version=__version__,status="ok",backend_execution="external-only"))
-        elif path in ("/","/index.html","/app.js","/style.css"):
+        elif path=="/api/projects" or path.startswith("/api/projects/"):
+            try:
+                self.get_project(path)
+            except ProjectNotFound as exc:self.send(404,{"error":str(exc)})
+            except ValueError as exc:self.send(400,{"error":str(exc)})
+            except (OSError, KeyError, TypeError):self.send(507,STORAGE_ERROR)
+        elif path=="/" or path[1:] in STATIC:
             name="index.html" if path=="/" else path[1:]
-            kind={"index.html":"text/html; charset=utf-8","app.js":"text/javascript; charset=utf-8","style.css":"text/css; charset=utf-8"}[name]
-            self.send(200,(ROOT/"web"/name).read_bytes(),kind)
+            try:data=(ROOT/"web"/name).read_bytes()
+            except FileNotFoundError:self.send(404,{"error":"Not found."})
+            else:self.send(200,data,STATIC[name])
         else:self.send(404,{"error":"Not found."})
 
-    def stream_extraction(self, body):
+    def get_project(self, path):
+        store = ProjectStore()
+        parts = path.split("/")
+        if path == "/api/projects":
+            self.send(200, {"projects": store.list()})
+        elif len(parts) == 4:
+            self.send(200, store.get(parts[3]))
+        elif len(parts) == 6 and parts[4] == "runs":
+            self.send(200, store.get_run(parts[3], parts[5]))
+        else:
+            self.send(404, {"error": "Not found."})
+
+    def post_project(self, path, body):
+        store = ProjectStore()
+        parts = path.split("/")
+        if path == "/api/projects":
+            self.send(201, store.create(body.get("title"), body.get("draft")))
+        elif len(parts) == 4:
+            self.send(200, store.update(parts[3], body))
+        else:
+            self.send(404, {"error": "Not found."})
+
+    @staticmethod
+    def save_run_result(store, project_id, run_id, result, provider):
+        safe_result, error = persisted_result(result, provider)
+        if error:
+            message = ("The generated model did not match the DetWeave IR schema."
+                       if error == "schema" else "The generated output contained credentials and was discarded.")
+            raise RunError(message, error)
+        store.finish_run(project_id, run_id, "succeeded", result=safe_result)
+        return {**safe_result, "project_run_id": run_id}
+
+    def extract_request(self, body, stream):
+        text = body.get("text")
+        provider = body.get("provider", {})
+        project_id = body.get("project_id")
+        store = ProjectStore() if project_id is not None else None
+        run_id = store.start_run(project_id, text, provider) if store else None
+        try:
+            if stream:
+                self.stream_extraction(body, store, project_id, run_id)
+            else:
+                result = run_extraction(text, provider)
+                if store:
+                    result = self.save_run_result(store, project_id, run_id, result, provider)
+                self.send(200, result)
+        except Exception as exc:
+            if store:
+                self.save_run_failure(store, project_id, run_id, exc)
+            raise
+
+    @staticmethod
+    def save_run_failure(store, project_id, run_id, exc):
+        code = getattr(exc, "code", "configuration" if isinstance(exc, ValueError) else "extraction_error")
+        status = "cancelled" if code == "cancelled" else "failed"
+        store.finish_run(project_id, run_id, status, error_code=code)
+
+    def stream_extraction(self, body, store=None, project_id=None, run_id=None):
         provider = body.get("provider", {})
         if not isinstance(provider, dict):
             raise ValueError("Provider configuration must be an object.")
@@ -141,6 +215,7 @@ class Handler(BaseHTTPRequestHandler):
         def write(event):
             self.wfile.write((json.dumps(event,ensure_ascii=False,allow_nan=False)+"\n").encode())
             self.wfile.flush()
+        terminal_handled = False
         thread.start()
         try:
             write(dict(type="status", stage=stage, message="请求已接收，正在启动模型调用。", elapsed_s=0))
@@ -149,14 +224,27 @@ class Handler(BaseHTTPRequestHandler):
                     event = events.get(timeout=1)
                 except queue.Empty:
                     if finished.is_set():
-                        write(dict(type="error", code="incomplete_response", message="调用结束但没有完整结果。", elapsed_s=round(control.elapsed,2)))
-                        break
-                    last = activity["last"]
-                    event = dict(type="heartbeat", stage=stage, elapsed_s=round(control.elapsed,2),
-                                 seconds_since_provider_event=None if last is None else round(time.monotonic()-last,2))
+                        event = dict(type="error", code="incomplete_response", message="调用结束但没有完整结果。", elapsed_s=round(control.elapsed,2))
+                    else:
+                        last = activity["last"]
+                        event = dict(type="heartbeat", stage=stage, elapsed_s=round(control.elapsed,2),
+                                     seconds_since_provider_event=None if last is None else round(time.monotonic()-last,2))
                 if event["type"] == "status":stage=event.get("stage",stage)
                 elif event["type"] == "reasoning":stage="thinking"
                 elif event["type"] == "output":stage="generating"
+                if store and event["type"] in ("result", "error"):
+                    terminal_handled = True
+                    try:
+                        if event["type"] == "result":
+                            try:
+                                event["result"] = self.save_run_result(store, project_id, run_id, event["result"], provider)
+                            except RunError as exc:
+                                self.save_run_failure(store, project_id, run_id, exc)
+                                event = dict(type="error", code=exc.code, message=str(exc))
+                        else:
+                            store.finish_run(project_id, run_id, "failed", error_code=event["code"])
+                    except (OSError, ProjectNotFound):
+                        event = dict(type="error", code=STORAGE_ERROR["code"], message=STORAGE_ERROR["error"])
                 write(event)
                 if event["type"] in ("result","error"):
                     break
@@ -164,12 +252,17 @@ class Handler(BaseHTTPRequestHandler):
             control.abort("cancelled")
         finally:
             if not finished.is_set():control.abort("cancelled")
+            if store and not terminal_handled:
+                try:store.finish_run(project_id, run_id, "cancelled", error_code="cancelled")
+                except (OSError, ProjectNotFound):pass  # Client has disconnected.
             thread.join(timeout=21)  # pending DNS/TLS connection has its own <=20 s timeout
             control.finish()
 
     def do_POST(self):
         if not self.allowed(post=True):return
-        if not SLOTS.acquire(blocking=False):
+        path=urlsplit(self.path).path
+        project_api=path=="/api/projects" or path.startswith("/api/projects/")
+        if not project_api and not SLOTS.acquire(blocking=False):
             self.send(429,{"error":"Three requests are already active. Wait for one to finish."});return
         try:
             if self.headers.get("Content-Type","").split(";")[0]!="application/json":
@@ -180,25 +273,33 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.settimeout(250)
             body=json.loads(self.rfile.read(size),parse_constant=lambda s: (_ for _ in ()).throw(ValueError("Non-finite JSON value.")))
             if not isinstance(body,dict):raise ValueError("Request must be an object.")
-            path=urlsplit(self.path).path
-            if path=="/api/extract/stream":
-                self.stream_extraction(body)
-            elif path=="/api/extract":
-                result=run_extraction(body.get("text"),body.get("provider",{}))
-                self.send(200,result)
+            if path in ("/api/extract", "/api/extract/stream"):
+                self.extract_request(body, stream=path.endswith("/stream"))
+            elif project_api:
+                self.post_project(path, body)
             elif path=="/api/validate":self.send(200,validate(body.get("model")))
             elif path=="/api/export":
-                self.send(200,project_zip(body.get("model"), body.get("provenance")),"application/zip","DetWeave-project.zip")
+                project_id = body.get("project_id")
+                provenance = body.get("provenance")
+                if project_id is not None:
+                    provenance = public_provenance(provenance)
+                archive = project_zip(body.get("model"), provenance)
+                if project_id is not None:
+                    ProjectStore().save_export(project_id, archive)
+                self.send(200,archive,"application/zip","DetWeave-project.zip")
             elif path=="/api/svg":
                 model=body.get("model");report=validate(model)
                 if any(i["code"]=="schema" for i in report["issues"]):raise ValueError("Fix the model schema before previewing.")
                 self.send(200,svg(model,report["instances"],body.get("plane","xz")),"image/svg+xml; charset=utf-8")
             else:self.send(404,{"error":"Not found."})
+        except ProjectNotFound as exc:self.send(404,{"error":str(exc)})
+        except OSError:self.send(507,STORAGE_ERROR)
         except ProviderError as exc:self.send(502,{"error":str(exc)})
         except (ValueError,TypeError,KeyError,RecursionError) as exc:self.send(400,{"error":str(exc)[:500]})
         except Exception:
             self.send(500,{"error":"Internal operation failed. No output was accepted."})
-        finally:SLOTS.release()
+        finally:
+            if not project_api:SLOTS.release()
 
 
 def serve(port=8765):

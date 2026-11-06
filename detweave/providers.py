@@ -59,6 +59,8 @@ def request_spec(config, text):
         if key:
             headers["Authorization"] = "Bearer " + key
         body = dict(model=model, messages=[dict(role="system", content=SYSTEM), dict(role="user", content=text)], max_tokens=12000)
+        if parsed.hostname == "api.openai.com":
+            body["max_completion_tokens"] = body.pop("max_tokens")
         if config.get("thinking"):
             if config["thinking"] not in ("enabled", "disabled", "auto"):
                 raise ProviderError("Unsupported thinking mode.")

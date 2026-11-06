@@ -1,0 +1,24 @@
+DetWeave
+Author / 作者: Hengne Li / 李衡讷
+Affiliation / 单位: South China Normal University / 华南师范大学
+Email: Hengne.Li@m.scnu.edu.cn; Hengne.Li@cern.ch
+Repository: https://github.com/hengne/DetWeave
+
+Current distribution: DetWeave Noncommercial Attribution and Citation License
+1.0. Noncommercial use only; commercial use requires written permission.
+Retain attribution and cite DetWeave in published work using the software.
+See LICENSE and CITATION.cff.
+
+License history
+Development snapshots through commit
+b6b93737d03b086be5700b81a7f83ba8b6e70e31 (0.1.1) were published under MIT.
+The original MIT notice is preserved in LICENSES/MIT-legacy.txt. This release
+and its new material use the license above; no assertion is made that rights
+already granted under MIT are withdrawn. Third-party dependencies keep their
+own licenses, including when bundled in platform packages.
+
+DetWeave is independent software. It is not an official CERN, Geant4, DD4hep,
+model-provider or South China Normal University product or endorsement.
+
+Generated geometry, analytic checks and a successful export are not a proof
+of complete detector correctness, navigation safety or physical equivalence.

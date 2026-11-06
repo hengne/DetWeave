@@ -1,94 +1,101 @@
 # DetWeave
 
-**Turn detector discussions into traceable geometry, review questions and reproducible simulation inputs.**
+**From detector discussions to traceable geometry, review questions and simulation inputs.**
 
-DetWeave 是面向 Geant4 用户的对话式探测器几何建模工作台。粘贴会议纪要或聊天记录，
-接入你选择的大模型 API，审阅统一几何模型及其原文依据，再导出 GDML、Geant4 C++ 工程
-与 DD4hep compact XML / detector constructor。
+[中文说明](README.zh-CN.md) · [Download releases](https://github.com/hengne/DetWeave/releases) · [Citation](CITATION.cff) · [License](LICENSE)
 
-当前为 **v0.1.1 研究原型**：小型层状量能器、晶体／硅片阵列与简单束流测试几何。
-模型草案、可导出模型和实际后端验证是三个独立状态。
+DetWeave is a local workbench for Geant4 users. Paste an unformatted conversation or meeting record, choose a model provider, review the evidence-linked geometry, then export GDML, a Geant4 C++ project or a DD4hep compact XML / detector constructor project.
 
-![DetWeave 工作台](docs/workbench.png)
+**Author:** Hengne Li (李衡讷), **South China Normal University (华南师范大学)**.
+**Contact:** Hengne.Li@m.scnu.edu.cn · Hengne.Li@cern.ch
 
-## 快速开始
+## Watch the workflow
 
-需要 Python 3.10+。网页与预览无 CDN、无前端构建依赖；模型 API 请求通过本机后端发送。
+![DetWeave English workflow demonstration](docs/media/detweave-demo-en.gif)
+
+[Download the English MP4](docs/media/detweave-demo-en.mp4) · [中文演示](docs/media/detweave-demo-zh.mp4)
+
+The recording uses explicitly labelled synthetic examples. It demonstrates the interface and saved-project workflow; it is not evidence that an arbitrary detector description has passed a live model or Geant4 validation. Real API results are documented separately in [live model verification](docs/LIVE_MODELS.md).
+
+## Get started
+
+Download the asset matching your platform from [GitHub Releases](https://github.com/hengne/DetWeave/releases). Read the release's platform validation table: a source/build project, simulator application and signed device installer are different deliverables. Native build instructions and platform-specific limits are in [packaging/README.md](packaging/README.md).
+
+For the Python distribution, use Python 3.10 or later:
 
 ```sh
 git clone https://github.com/hengne/DetWeave.git
 cd DetWeave
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]'
+python -m pip install -e .
 python -m detweave serve
 ```
 
-打开 **http://127.0.0.1:8765**。macOS 可在安装依赖后双击 `Start DetWeave.command`，
-或执行 `python -m detweave serve`。服务仅监听本机，不是公开托管站点。
+On Windows, activate with `.venv\Scripts\activate`. Open `http://127.0.0.1:8765` for this browser-based Python edition. The service listens only on this computer. The native edition embeds the Python runtime and opens its own window.
 
-1. 加载“钨／硅采样结构”或“圆管与硅片”内置示例，可在没有 API key 时体验完整导出流程。
-2. 处理自己的无格式文本时，选择 API 协议，填写 Base URL、模型标识及 API key。火山用户可直接选择 Coding Plan 预设，并从下拉菜单选择[当前文档中的全部生成模型](docs/ARK_MODELS.md)。
-   提取时自动展开“运行过程 / Thinking”，可查看服务商公开的思考片段、几何 JSON、耗时及最近数据时间，也可取消。
-3. 审阅部件、参数、引用原文和澄清问题；用补充回答重新抽取，或编辑结构化模型。
-4. 查看正投影和可旋转三维模型。关键假设和问题未解决前，工程导出被阻止。
-5. 下载项目 ZIP，在目标 Geant4 / DD4hep 环境编译和加载；按随附说明保存实际验证报告。
+1. Choose **New project** in the left dropdown, enter a title and create a local project. Built-in synthetic examples remain available for offline exploration.
+2. Enter the discussion or prompt. Choose a provider and model, then enter your own API key when making a live request.
+3. Run extraction. **Run progress / Thinking** shows actual provider-supplied reasoning when available, output fragments, elapsed time and connection activity. You can cancel the request.
+4. Review dimensions, materials, source quotes, conflicts and clarification questions. Add the missing information and extract again; submitted prompts and run outcomes are versioned in the project.
+5. Inspect the SVG projections and interactive 3D preview. Export only after blocking issues are resolved. Compile and validate generated projects in the intended Geant4/DD4hep environment.
 
-**离线演示仅使用明确标记的固定合成样例，不会把任意输入偷偷替换为示例。**
-真实文本抽取需要有效 API 凭证。火山 Coding Plan 的 `ark-code-latest` 已完成真实中英文采样结构抽取，且实际输出已通过
-Geant4 加载与跟踪。实测发现的跨段引用问题已通过多段引用修复；仍保留超时及失败案例，详见[真实模型测试](docs/LIVE_MODELS.md)。
-GPT-4 尚未实测；本地模拟协议测试不代表模型理解能力。
+Switch between **English** and **中文** in the interface. Source discussions, model responses and user titles retain their original language.
 
-## 已实现
+## Model providers
 
-| 能力 | v0.1 范围 |
+The catalog includes Volcengine Coding Plan, DeepSeek's official API, Kimi Code, GLM Coding Plan, Alibaba Cloud Token Plan, Tencent General Token Plan, Tencent Hunyuan Hy Token Plan, OpenAI, Anthropic and Google Gemini. It records provider-specific model IDs, endpoint URLs, billing category and official sources, verified on **2026-11-06**.
+
+See [the complete catalog](docs/PROVIDERS.md). Subscription products and metered APIs are separate, and model access depends on the account. Some subscriptions restrict eligible tools; a listed compatible endpoint does not itself establish permission to use that subscription in a custom application. No API keys are bundled, fetched or enrolled by the catalog.
+
+## What is included
+
+| Capability | Current scope |
 |---|---|
-| 多模型 API | OpenAI Chat Completions 兼容、Anthropic Messages、Gemini generateContent；模型 ID 可配置，包括账号可用的 GPT-4；支持 localhost 兼容服务 |
-| 流式进度 | 可收起的 Thinking 窗口、公开思考与 JSON 分栏、真实数据活动与本地心跳区分、取消、默认 600 秒可调总时限 |
-| 无格式文本输入 | 中文、英文和混合讨论，由所选模型抽取；30,000 字符请求上限 |
-| 统一模型 | 严格 JSON Schema；长方体、沿 z 的完整圆柱／圆管；局部平移、层级、重复阵列 |
-| 来源与澄清 | 关键参数的原文引用、明确／确认／推导／假设／未解决状态；缺来源或未确认项阻止导出 |
-| 验证 | 单位约定、正尺寸、引用、循环、扩展数量、支持形状的解析重叠与越界检查 |
-| 可视化 | XY／XZ／YZ SVG、交互三维、材料颜色、部件选择与依据关联、独立离线预览下载 |
-| 修改与保存 | 补充回答后再抽取、JSON 编辑、撤销、项目导入／导出；按明确操作保存本机副本 |
-| 输出 | 自包含材料 GDML、直接构造几何的 Geant4 C++、DD4hep XML + C++ 插件、来源、SHA-256 清单、SVG、校验报告 |
-| 原生验证工具 | Geant4 递归 CheckOverlaps、三条中心轴导航、十事件 geantino 测试、实际几何表与 IR 比对 |
+| Unformatted text | Chinese, English or mixed discussions; selected model extracts the geometry |
+| Project history | Named local projects, saved prompt versions, run outcomes, model/validation snapshots and exports |
+| Geometry model | Strict JSON Schema; boxes and complete z-axis cylinders/tubes; translations, nesting and repeated arrays |
+| Evidence and clarification | Original source quotes, explicit/derived/assumed/unresolved states; unsupported or unresolved requirements block export |
+| Checks | Units, dimensions, references, cycles, expansion limits and supported analytic overlaps/containment |
+| Visualization | XY/XZ/YZ SVG, rotatable 3D, material colors, selected-component evidence and offline HTML preview |
+| Streaming | Provider-visible thinking and JSON shown separately; cancellation; configurable 60–900 s total limit, default 600 s |
+| Exports | GDML with material definitions, Geant4 C++, DD4hep XML + C++, source evidence, hashes, SVG and validation report |
+| Native verification tools | Geant4 recursive CheckOverlaps, three-axis navigation, ten-event geantino test and geometry/IR comparisons |
 
-材料快照取自 **Geant4 11.1.3 NIST**。应用只支持 schema 中列出的 12 种材料；
-未声明光学属性、敏感体、读出、磁场或能量沉积测量。DD4hep 的材料转换差异和验证状态见
-[验证记录](docs/VALIDATION.md)，不能仅凭文件生成就认定不同后端物理等价。
+A **draft**, an **exportable model**, and a **backend-validated model** are separate states. Export does not prove physical equivalence or complete correctness. Supported material definitions are a snapshot of 12 Geant4 11.1.3 NIST materials; optical properties, readout, sensitive-detector behavior, fields and energy scoring are not configured.
 
-## 命令行与开发
+## Files and privacy
+
+The application stores explicitly created projects locally. Prompt history includes the user's discussion and the extraction system prompt, so project folders and exported ZIPs may contain sensitive research content. API keys and raw model reasoning traces are not written to those project records. Choosing a remote provider sends the discussion to that provider; offline examples and local geometry checks do not.
+
+A standalone HTML preview works without Python, but it is a geometry viewer. The full application needs its bundled or installed runtime. Embedding Python source text inside HTML alone would not make the existing socket/thread backend run in a browser; see [delivery formats](docs/DISTRIBUTION.md).
+
+## License and citation
+
+DetWeave 0.2.0 is **source-available for noncommercial use**, under the [DetWeave Noncommercial Attribution and Citation License 1.0](LICENSE). Commercial use requires separate written authorization from Hengne Li. Keep the author attribution and cite DetWeave in publicly shared work to which it materially contributed.
+
+> Hengne Li. *DetWeave: Conversation-driven detector geometry modelling and validation*. South China Normal University. Version 0.2.0, 2026. https://github.com/hengne/DetWeave
+
+Use the version or commit actually used; [CITATION.cff](CITATION.cff) enables GitHub's citation export. Earlier MIT-licensed development snapshots retain their historical license record in [NOTICE](NOTICE) and [LICENSES/MIT-legacy.txt](LICENSES/MIT-legacy.txt). Third-party components retain their own licenses.
+
+## Development and validation
 
 ```sh
+python -m pip install -e '.[dev]'
+python -m pytest -q
 python -m detweave validate examples/sampling.json
 python -m detweave export examples/sampling.json --output local/sampling.zip
-python -m pytest -q
-# 在已经激活并配置好数据集变量的 Geant4 环境中：
-python scripts/validate_backends.py --geant4-prefix /path/to/geant4
 ```
 
-生成的项目包括 CMake 与运行说明。应用后端不会执行模型生成的代码；原生检查在你指定的
-开发环境显式运行。v0.1 尚未把隔离构建队列集成进网页。
+The local workbench never executes model-generated code. Native Geant4/DD4hep checks run separately in the environment you specify. [Validation records](docs/VALIDATION.md) describe tested versions and remaining limits; sample results do not automatically apply to new geometries.
 
-API key 仅存在于本次请求／页面内存，不写入项目、日志或浏览器持久存储。
-选择远程模型时，**输入全文会发送给配置的服务商**。离线演示和几何验证不发送外部请求。
-本地项目 JSON 与 ZIP 会包含原始文本，分享前应自行检查适用范围。费用由模型服务商另计；
-公开 GitHub 仓库不附送模型 API 额度。应用不启用自动付费部署或云算力。
+- [Architecture](docs/ARCHITECTURE.md)
+- [Provider catalog](docs/PROVIDERS.md)
+- [Project storage](docs/PROJECTS.md)
+- [Streaming protocol and timeouts](docs/STREAMING.md)
+- [Geometry format](docs/FORMAT.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Native packaging](packaging/README.md)
+- [Contributing](CONTRIBUTING.md)
 
-- [流式进度、Thinking 与超时](docs/STREAMING.md)
-- [架构与功能设计](docs/ARCHITECTURE.md)
-- [后续开发路线与验收标准](docs/ROADMAP.md)
-- [验证记录及已知边界](docs/VALIDATION.md)
-- [模型与后端约定](docs/FORMAT.md)
-- [贡献指南](CONTRIBUTING.md)
-
-## 设计依据
-
-DD4hep compact 描述需要配套 detector constructors，见
-[DD4hep 官方说明](https://dd4hep.web.cern.ch/usermanuals/DD4hepManual/DD4hepManualch1.html)。
-Geant4 的 `CheckOverlaps()` 是带采样和容差配置的检查，见
-[Geant4 官方重叠检测文档](https://geant4.web.cern.ch/documentation/pipelines/master/bfad_html/ForApplicationDevelopers/Detector/Geometry/geomOverlap.html)。
-图像正常或一次采样通过，都不是对所有重叠、导航或物理配置的完整证明。
-
-MIT license. DetWeave is independent software, not an official CERN, Geant4 or DD4hep product.
+DetWeave is independent software, not an official CERN, Geant4, DD4hep or model-provider product.

@@ -1,0 +1,93 @@
+DetWeave Noncommercial Attribution and Citation License 1.0
+SPDX-License-Identifier: LicenseRef-DetWeave-NC-Attribution-1.0
+
+Copyright (c) 2026 Hengne Li (李衡讷)
+South China Normal University (华南师范大学)
+Contact: Hengne.Li@m.scnu.edu.cn; Hengne.Li@cern.ch
+
+1. Scope and permission
+Subject to this license, the copyright holder grants you permission to use,
+copy, study, modify and redistribute the DetWeave software, its documentation
+and first-party demonstration assets (the "Software") for noncommercial
+purposes only. This is a source-available license, not an OSI-approved
+open-source license. No rights beyond those stated here are granted.
+
+2. Noncommercial use
+Noncommercial means use that is not primarily intended for or directed toward
+commercial advantage or monetary compensation. Commercial use includes sale,
+paid access, paid consulting or services using the Software, and use in the
+development, operation or delivery of a commercial product or service.
+Commercial use requires a separate written authorization from Hengne Li.
+Public or privately funded research is permitted when the actual use meets
+the noncommercial definition. If the intended use is unclear, contact the
+author before relying on this permission.
+
+3. Attribution
+Every redistributed copy or substantial portion, including modified versions
+and binary distributions, must retain this license, copyright notice, author
+name, affiliation, contact details and the NOTICE file. User-facing versions
+must retain a reasonably accessible About/Credits notice naming DetWeave and
+Hengne Li, South China Normal University. Do not imply the author's or
+university's endorsement of a modified version or a user's results.
+
+4. Citation of published use
+When publicly sharing research, reports, presentations, software or other
+results for which DetWeave materially contributed to geometry creation,
+validation or export, cite the software in an appropriate references,
+acknowledgments, methods, credits or accompanying documentation section:
+
+Hengne Li. DetWeave: Conversation-driven detector geometry modelling and
+validation. South China Normal University. Version [version used], [year].
+https://github.com/hengne/DetWeave
+
+Use the actual version or commit when available. CITATION.cff provides a
+machine-readable citation. Private use does not require public disclosure
+of confidential input or results.
+
+5. Modifications and redistribution
+Mark modified versions and describe material modifications. Redistribute
+covered material under this license and do not remove the attribution or
+citation requirements. No sublicensing under terms permitting commercial
+use is granted. Independent components and third-party dependencies retain
+their own licenses; do not apply these restrictions to those components.
+
+6. Inputs, outputs and prior versions
+This license does not claim ownership of user input or original user output.
+Copied portions of Software templates remain covered material and must retain
+applicable notices. Commercial operation of the Software still requires
+permission under section 2 regardless of ownership of its output.
+This license applies to material distributed under it from DetWeave 0.2.0.
+It does not revoke rights already granted for earlier MIT-licensed versions
+or change third-party licenses. See NOTICE and LICENSES/MIT-legacy.txt.
+
+7. Termination and statutory rights
+Permission terminates if you fail to comply with this license. Contact the
+author to resolve a breach or obtain separate permission. Nothing in this
+license limits rights you have under applicable copyright exceptions or law.
+
+8. Disclaimer
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE AUTHOR AND
+CONTRIBUTORS ARE NOT LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING
+FROM THE SOFTWARE OR ITS USE. Generated geometry requires independent review
+and validation for the intended scientific application.
+
+中文说明（与以上条款配套阅读；解释不一致时以英文条款为准）
+
+本软件由李衡讷（Hengne Li，华南师范大学）提供。允许非商业使用、学习、
+复制、修改和再分发；商业用途，包括销售、收费服务、付费咨询，以及商业产品或
+服务的开发、运营或交付，须事先取得作者书面授权。
+
+分发原版、修改版或二进制安装包时，必须保留本许可、版权声明、作者、单位、
+联系方式和 NOTICE；有用户界面的版本必须提供可访问的作者署名。
+公开发表或分享实质使用 DetWeave 产生的研究、报告、演示、软件或其他成果时，
+须在参考文献、致谢、方法、署名或随附文档中引用 DetWeave，并注明所用版本。
+私人使用无需披露保密输入或成果。修改版须标明修改，不得暗示作者或单位背书。
+
+用户输入和原创输出的权属不因使用本软件而转移；复制的软件模板部分仍须保留
+适用声明。第三方依赖适用各自许可。本许可自 0.2.0 中据此发布的内容起适用，
+不撤销此前 MIT 版本已授予的权利。本软件按现状提供，不提供适用性保证；
+生成的探测器几何须针对具体用途独立审阅和验证。
+
+商业授权或其他联系：Hengne.Li@m.scnu.edu.cn / Hengne.Li@cern.ch

@@ -1,0 +1,51 @@
+name: Native build candidates
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+    branches: ['codex/release-*']
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install briefcase==0.4.7
+      - run: briefcase create windows --no-input
+        working-directory: packaging
+      - run: briefcase build windows --no-input
+        working-directory: packaging
+      - run: briefcase package windows --no-input
+        working-directory: packaging
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DetWeave-Windows-unsigned
+          path: packaging/dist/*
+          if-no-files-found: error
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python -m pip install briefcase==0.4.7
+      - run: briefcase create android --no-input
+        working-directory: packaging
+      - run: briefcase build android --no-input
+        working-directory: packaging
+      - run: briefcase package android -p debug-apk --no-input
+        working-directory: packaging
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DetWeave-Android-debug-only
+          path: packaging/dist/*
+          if-no-files-found: error

@@ -7,6 +7,8 @@
   <meta name="description" content="从设计讨论提取探测器几何，核对参数来源并导出。">
   <title>DetWeave · 探测器几何工作台</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/i18n.js" defer></script>
+  <script src="/providers-catalog.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -22,6 +24,8 @@
       <div class="masthead-tools">
         <span class="local-indicator"><i></i> 本地工作台</span>
         <a class="quiet header-schema" href="/api/schema" target="_blank" rel="noopener">IR Schema <span aria-hidden="true">↗</span></a>
+        <label class="sr-only" for="language">界面语言</label>
+        <select id="language" class="language-select" autocomplete="off"><option value="zh-CN">中文</option><option value="en">English</option></select>
         <button type="button" class="button compact" id="import">导入项目</button>
         <input type="file" id="import-file" accept=".json,application/json" hidden>
       </div>
@@ -40,6 +44,35 @@
         <span class="chip">mm · XYZ</span>
         <span class="chip">盒体 / 全圆管</span>
       </div>
+    </section>
+
+    <section class="panel projects" aria-labelledby="project-title-label">
+      <div class="project-bar">
+        <div class="project-field">
+          <label id="project-title-label" for="project-menu">本地项目</label>
+          <select id="project-menu"><option value="">临时工作区</option><option value="__new__">新建项目…</option></select>
+        </div>
+        <div class="project-field" id="active-project-title" hidden>
+          <label for="project-title-input">项目标题</label>
+          <input id="project-title-input" type="text" maxlength="100" autocomplete="off">
+        </div>
+        <button type="button" class="button compact" id="project-save" hidden>保存本地项目</button>
+        <p id="project-message" class="fine-print" role="status" aria-live="polite">创建项目后，讨论版本与提取记录保存到本机目录。</p>
+      </div>
+      <details id="project-history" class="project-history" hidden>
+        <summary><span>提示词与运行记录</span> <span id="project-history-count" class="mono"></span></summary>
+        <div class="project-history-body">
+          <div class="project-location">
+            <div><span class="muted">本机目录</span><code id="project-folder"></code></div>
+            <button type="button" class="button compact" id="project-copy-path">复制路径</button>
+            <button type="button" class="button compact" id="project-refresh">刷新记录</button>
+          </div>
+          <div class="project-history-grid">
+            <section><h3>讨论版本</h3><div id="project-prompts"></div></section>
+            <section><h3>提取与导出记录</h3><div id="project-runs"></div></section>
+          </div>
+        </div>
+      </details>
     </section>
 
     <div class="workbench">
@@ -61,7 +94,6 @@
             <label for="provider">提取方式</label>
             <select id="provider">
               <option value="demo">离线演示 · 固定示例</option>
-              <option value="ark-coding">火山 Coding Plan · OpenAI 兼容</option>
               <option value="openai">OpenAI / 兼容接口</option>
               <option value="anthropic">Anthropic / 兼容接口</option>
               <option value="gemini">Google Gemini</option>
@@ -70,34 +102,9 @@
               <label for="base-url">Base URL <span class="muted">可选</span></label>
               <input id="base-url" type="url" autocomplete="off" placeholder="使用服务端默认地址">
               <div id="ark-model-fields" class="provider-fields" hidden>
-                <label for="ark-model-select">订阅模型</label>
-                <select id="ark-model-select" aria-describedby="ark-model-help">
-                  <option value="ark-code-latest">ark-code-latest · 跟随控制台 / Auto</option>
-                  <optgroup label="Doubao">
-                    <option value="doubao-seed-evolving">doubao-seed-evolving</option>
-                    <option value="doubao-seed-2.1-pro">doubao-seed-2.1-pro</option>
-                    <option value="doubao-seed-2.1-lite">doubao-seed-2.1-lite</option>
-                    <option value="doubao-seed-2.0-mini">doubao-seed-2.0-mini</option>
-                  </optgroup>
-                  <optgroup label="GLM">
-                    <option value="glm-5.3">glm-5.3</option>
-                    <option value="glm-5.3-flash">glm-5.3-flash</option>
-                    <option value="glm-latest">glm-latest · glm-5.3 别名</option>
-                  </optgroup>
-                  <optgroup label="DeepSeek">
-                    <option value="deepseek-v4.1-flash">deepseek-v4.1-flash</option>
-                    <option value="deepseek-v4.1-flash-economy">deepseek-v4.1-flash-economy</option>
-                    <option value="deepseek-v4-flash">deepseek-v4-flash</option>
-                    <option value="deepseek-v4-pro">deepseek-v4-pro</option>
-                  </optgroup>
-                  <optgroup label="Kimi">
-                    <option value="kimi-k2.8-preview">kimi-k2.8-preview</option>
-                    <option value="kimi-k3">kimi-k3</option>
-                    <option value="kimi-k3.1-pro">kimi-k3.1-pro</option>
-                  </optgroup>
-                  <option value="__custom__">手动输入模型 ID…</option>
-                </select>
-                <p id="ark-model-help" class="fine-print">13 个模型 + 路由入口 + 别名。核对于 2026-11-06；实际权限以账号及区域为准。<a href="https://docs.volcengine.com/docs/ark/coding-plan-personal-ai-other-tools?lang=zh" target="_blank" rel="noopener noreferrer">官方模型清单 ↗</a></p>
+                <label for="ark-model-select">模型菜单</label>
+                <select id="ark-model-select" aria-describedby="ark-model-help"></select>
+                <p id="ark-model-help" class="fine-print"></p>
               </div>
               <label id="model-name-label" for="model-name">模型 ID</label>
               <input id="model-name" type="text" autocomplete="off" placeholder="输入所用模型 ID">
@@ -150,7 +157,7 @@
           </div>
           <section class="run-events" aria-labelledby="run-events-title">
             <h3 id="run-events-title">事件日志 <span id="run-log-truncated" class="muted" hidden>最近 100 条</span></h3>
-            <ol class="run-log" id="run-log" tabindex="0" aria-labelledby="run-events-title"></ol>
+            <ol class="run-log" id="run-log" tabindex="0" aria-labelledby="run-events-title" data-empty="暂无事件。"></ol>
           </section>
           <p class="run-foot fine-print">本地心跳只表示页面仍在等待。此面板仅保留本页最近一次运行，不写入项目文件。</p>
         </section>
@@ -245,8 +252,33 @@
   </main>
 
   <footer class="shell footer">
-    <span>DetWeave / 0.1.1</span>
+    <span>DetWeave / 0.2.0</span>
     <span>世界坐标 · 毫米 · 平移放置</span>
+    <button type="button" class="text-button" id="about-open">关于与署名</button>
   </footer>
+  <dialog id="project-create-dialog" class="about-dialog" aria-labelledby="project-create-title">
+    <header class="about-head"><h2 id="project-create-title">新建本地项目</h2></header>
+    <form id="project-create-form" class="about-body">
+      <label for="project-create-name">项目标题</label>
+      <input id="project-create-name" type="text" maxlength="100" autocomplete="off" required>
+      <p class="fine-print">创建一个本机目录，用于保存讨论、几何和提取记录。</p>
+      <p id="project-create-error" class="fine-print error" role="status"></p>
+      <div class="dialog-actions">
+        <button type="button" class="button compact" id="project-create-cancel">取消</button>
+        <button type="submit" class="button compact primary" id="project-create-submit">创建项目</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title">
+    <header class="about-head"><h2 id="about-title">关于 DetWeave</h2><form method="dialog"><button class="button compact" autofocus>关闭</button></form></header>
+    <div class="about-body">
+      <h3>作者与联系</h3>
+      <p><strong>李衡讷 / Hengne Li</strong><br>华南师范大学 / South China Normal University</p>
+      <p><a href="mailto:Hengne.Li@m.scnu.edu.cn">Hengne.Li@m.scnu.edu.cn</a><br><a href="mailto:Hengne.Li@cern.ch">Hengne.Li@cern.ch</a></p>
+      <h3>许可与引用</h3>
+      <p>DetWeave 供非商业使用。使用时请保留作者署名，并在研究成果中引用本项目。具体条款见项目许可。</p>
+      <p><a href="https://github.com/hengne/DetWeave" target="_blank" rel="noopener noreferrer">项目主页与引用信息 ↗</a></p>
+    </div>
+  </dialog>
 </body>
 </html>

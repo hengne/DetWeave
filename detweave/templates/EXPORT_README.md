@@ -46,3 +46,10 @@ Do not load the compact file without building and exposing its plugin first.
 `manifest.json` records engine/schema/material versions, model SHA-256 and output hashes.
 `source.txt` and `model.json` contain your input: share this bundle only with its intended recipients.
 The ZIP is deterministic for identical input and engine version. API keys are never included.
+
+## Attribution and citation / 署名与引用
+
+Generated with DetWeave by Hengne Li (李衡讷), South China Normal University (华南师范大学).
+Contact: Hengne.Li@m.scnu.edu.cn; Hengne.Li@cern.ch.
+See CITATION.cff, NOTICE.txt and LICENSE.txt. DetWeave is for noncommercial use; commercial operation requires separate authorization.
+User input and original output remain the user’s; copied software templates retain applicable notices.
