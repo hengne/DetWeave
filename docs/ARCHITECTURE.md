@@ -26,6 +26,9 @@ flowchart LR
 - `exporters.py` / `dd4hep.py`：同一 IR 生成代码、GDML、材料、SVG 与可复现 ZIP；模型不控制模板执行或输出路径。
 - `web/`：无构建工具、无外部前端资源；导入导出、审阅、澄清、撤销、SVG 和 Canvas 三维。
 - `server.py`：本机工作台 API，只监听 127.0.0.1；Origin/Host/自定义请求头校验，请求体上限和并发限制。
+- `projects.py` / `folder_picker.py`：项目位置注册、系统目录选择、原子写入、提示词版本、运行结果和导出归档。
+- `standalone/`：把现有 Python 校验及导出核心嵌入 Pyodide 单文件 HTML；浏览器 fetch、IndexedDB 和授权目录适配，不执行 Python HTTP 服务。事务失败回滚，目录冲突不覆盖外部文件。
+- `packaging/`：Toga／Briefcase 原生封装，桌面目录选择与手机文档导出；各平台的运行验证与签名状态单独记录。
 - `scripts/validate_backends.py`：显式执行生成的可信模板，比较 Geant4 实际几何与 IR，再对同一实例的 GDML／C++ 结果作交叉比对。
 
 ## 不应合并的三种状态

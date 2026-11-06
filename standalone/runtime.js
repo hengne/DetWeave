@@ -36,7 +36,9 @@ async function startDetWeavePortable(bundle) {
   function db(mode, action) {
     return new Promise((resolve, reject) => {
       const tx = database.transaction('library', mode);
-      const request = action(tx.objectStore('library'));
+      let request;
+      try { request = action(tx.objectStore('library')); }
+      catch (error) { tx.abort(); reject(error); return; }
       tx.oncomplete = () => resolve(request?.result);
       tx.onerror = tx.onabort = () => reject(new Error('Project storage failed; export a library backup now. / 项目保存失败，请立即导出项目库备份。'));
     });
@@ -98,13 +100,18 @@ async function startDetWeavePortable(bundle) {
     }
   }
   let pendingSave=Promise.resolve();
-  function mutation(work) {
+  function mutation(work, folderHandle) {
     const queued=pendingSave.catch(()=>{}).then(async()=>{
       const before=call('snapshot'); let result;
       try {
         result=await work();
-        await db('readwrite',store=>store.put(call('snapshot'),'snapshot'));
+        const snapshot=call('snapshot');
+        await db('readwrite',store=>{
+          if (folderHandle) store.put([...new Map(handles).set(result.handleId,folderHandle)],'handles');
+          return store.put(snapshot,'snapshot');
+        });
       } catch(error) { call('reset',{archive:before}); throw error; }
+      if (folderHandle) handles.set(result.handleId,folderHandle);
       try { await mirror(); document.getElementById('portable-storage-warning')?.remove(); }
       catch(error) { warn(error.message); }
       return result;
@@ -131,37 +138,56 @@ async function startDetWeavePortable(bundle) {
     let handle;
     try { handle = await window.showDirectoryPicker({mode:'readwrite', id:'detweave-projects'}); }
     catch (error) { if (error.name === 'AbortError') return null; throw error; }
-    let id;
-    for (const [existingId, existing] of handles) if (await handle.isSameEntry(existing)) { id = existingId; break; }
-    id ||= crypto.randomUUID().replaceAll('-', '');
-    handles.set(id, handle);
-    await db('readwrite', (store) => store.put([...handles], 'handles'));
-    return await mutation(async()=>{
-    const result = call('register', {handle_id:id, label:handle.name});
-    // Reopen existing DetWeave project folders only; never import unrelated user files.
-    let imported = 0;
-    async function readTree(directory, path, depth = 0) {
-      if (depth > 6) throw new Error('Project folder nesting exceeds limit.');
-      python.FS.mkdirTree(path);
-      for await (const entry of directory.values()) {
-        if (entry.kind === 'directory') await readTree(entry, path + '/' + entry.name, depth + 1);
-        else {
-          const file = await entry.getFile(); imported += file.size;
-          if (imported > 100_000_000) throw new Error('Project folders exceed 100 MB.');
-          const bytes = new Uint8Array(await file.arrayBuffer());
-          const target = path + '/' + entry.name;
-          if (!python.FS.analyzePath(target).exists) python.FS.writeFile(target, bytes);
+    const chosen = await mutation(async () => {
+      const conflict = () => new Error(label(
+        '所选文件夹包含已登记在其他位置的项目。请选择原文件夹，或在单独的浏览器配置中打开副本。',
+        'The selected folder contains a project already registered elsewhere. Choose its original folder, or open the copy in a separate browser profile.'));
+      let id;
+      for (const [existingId, existing] of handles) {
+        if (await handle.isSameEntry(existing)) { id = existingId; break; }
+      }
+      const existingProjects = new Map(call('projects').projects.map((project) => [project.id, project]));
+      const diskProjects = new Map();
+      for await (const entry of handle.values()) {
+        const match = entry.kind === 'directory' && / -- ([0-9a-f]{32})$/.exec(entry.name);
+        if (!match) continue;
+        let metadata;
+        try { metadata = JSON.parse(await (await (await entry.getFileHandle('project.json')).getFile()).text()); } catch { continue; }
+        if (metadata?.schema_version !== 1 || metadata.id !== match[1]) continue;
+        if (diskProjects.has(metadata.id)) throw conflict();
+        const registered = existingProjects.get(metadata.id);
+        if (registered) {
+          const origin = /^\/storage\/handles\/([0-9a-f]{32})\/([^/]+)$/.exec(registered.folder);
+          if (!origin || origin[2] !== entry.name || (id && origin[1] !== id)
+              || (!id && handles.has(origin[1]))) throw conflict();
+          id ||= origin[1];
+        }
+        diskProjects.set(metadata.id, entry);
+      }
+      id ||= crypto.randomUUID().replaceAll('-', '');
+      const location = call('register', {handle_id:id, label:handle.name});
+      let imported = 0;
+      async function readTree(directory, path, depth = 0) {
+        if (depth > 6) throw new Error('Project folder nesting exceeds limit.');
+        python.FS.mkdirTree(path);
+        for await (const entry of directory.values()) {
+          if (entry.kind === 'directory') await readTree(entry, path + '/' + entry.name, depth + 1);
+          else {
+            const file = await entry.getFile(); imported += file.size;
+            if (imported > 100_000_000) throw new Error('Project folders exceed 100 MB.');
+            const target = path + '/' + entry.name;
+            if (!python.FS.analyzePath(target).exists) python.FS.writeFile(target, new Uint8Array(await file.arrayBuffer()));
+          }
         }
       }
-    }
-    for await (const entry of handle.values()) if (entry.kind === 'directory' && / -- [0-9a-f]{32}$/.test(entry.name)) {
-      let metadata;
-      try { metadata = JSON.parse(await (await (await entry.getFileHandle('project.json')).getFile()).text()); } catch { continue; }
-      if (metadata.schema_version !== 1 || metadata.id !== entry.name.split(' -- ').at(-1)) continue;
-      await readTree(entry, '/storage/handles/' + id + '/' + entry.name);
-    }
-    return friendly(result);
-    });
+      for (const entry of diskProjects.values()) {
+        const path = '/storage/handles/' + id + '/' + entry.name;
+        await readTree(entry, path);
+        for (const child of ['prompts', 'runs', 'exports']) python.FS.mkdirTree(path + '/' + child);
+      }
+      return {handleId:id, location};
+    }, handle);
+    return friendly(chosen.location);
   };
   const jsonResponse = (value, status = 200) => new Response(JSON.stringify(friendly(value)), {status, headers:{'Content-Type':'application/json'}});
   const encoder = new TextEncoder();

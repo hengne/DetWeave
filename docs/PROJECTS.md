@@ -1,6 +1,6 @@
 # Local DetWeave projects
 
-The browser workbench saves named projects in `~/Documents/DetWeave/projects` by default. Set `DETWEAVE_PROJECTS_DIR` before starting a standalone server to choose a different default. The native launcher supplies its app data directory. When creating a project, select the default or register an existing parent directory on the machine running DetWeave. DetWeave remembers these locations in `.locations.json` under the default directory and discovers projects there on restart. If a registered directory is temporarily unavailable, its projects appear again when it is accessible.
+The Python browser-server edition saves named projects in `~/Documents/DetWeave/projects` by default. Set `DETWEAVE_PROJECTS_DIR` before starting a standalone server to choose a different default. Desktop native launchers use their app data directory by default; iOS uses its shared Documents area, and Android uses app-private storage. The single-file HTML uses browser storage or an authorized directory handle; see [the standalone guide](../standalone/README.md). When creating a project, select the default or register an existing parent directory on the machine running DetWeave. DetWeave remembers these locations in `.locations.json` under the default directory and discovers projects there on restart. If a registered directory is temporarily unavailable, its projects appear again when it is accessible.
 
 A project folder starts with a filesystem-safe version of its original title and ends with a unique identifier. Changing the displayed title updates the project metadata. Its folder path stays stable.
 
@@ -29,3 +29,16 @@ All project mutations use JSON and the existing `X-DetWeave: 1` request header.
 A draft includes `text`, `model`, `provenance`, `review_pending` and optional `json_text` for unapplied editor text. `/api/extract`, `/api/extract/stream` and `/api/export` accept a top-level `project_id` to persist the operation. The server returns a storage error if it cannot save the operation. A connected browser receives storage errors before a result is accepted.
 
 The standalone browser server offers the system picker on macOS and on Windows or Linux with Tk available in the graphical session. The location index reports picker support in `capabilities.system_picker`. Cancelling the system picker returns `{"cancelled": true}` without registering a directory. The absolute path entry remains available on the standalone server.
+
+## 中文：保存位置与历史
+
+新建项目时填写标题并明确选择保存位置，界面显示实际项目文件夹。桌面版可调用系统目录选择器，
+Python 浏览器服务也可输入已有父目录的绝对路径。标题用于子文件夹名称，并附唯一标识，避免同名覆盖。
+
+- iOS 默认使用应用 Documents 区域，通过“文件”共享；Android 使用应用私有目录，文件导出使用系统选择器。
+- 单文件 HTML 可使用浏览器授权文件夹，或明确标注的浏览器项目库；项目库可完整导出和恢复 ZIP 备份。
+- 每个不同的已保存／提交提示词都有版本记录。相同文本再次运行会关联原版本，同时新增运行记录。
+- 成功结果保存模型、校验报告及公开来源信息；失败、取消及重启中断的运行也保留。
+- 项目文件夹不保存模型 API 配置中的密钥、原始思考文本或未完成的模型输出。
+
+修改显示标题不会移动现有文件夹。复制整个项目文件夹可保留历史；几何导出 ZIP 与完整项目历史备份是不同内容。

@@ -19,7 +19,7 @@ async function ready(page, address) {
 }
 
 async function waitForReady(page) {
-  await page.waitForFunction(() => document.querySelector("#export")?.disabled === false);
+  await page.waitForFunction(() => window.DetWeavePortable && document.querySelector("#export")?.disabled === false);
 }
 
 async function newProject(page, title) {
@@ -207,6 +207,96 @@ async function checkDirectoryMirror(browser, address) {
   }
 }
 
+async function checkRestoredDirectoryRelink(browser, address) {
+  async function openProfile() {
+    const context = await browser.newContext(settings);
+    await context.addInitScript(() => {
+      window.showDirectoryPicker = async () => {
+        const root = await navigator.storage.getDirectory();
+        return root.getDirectoryHandle(window.qaPickedRoot || "qa-relinked-folder", { create: true });
+      };
+    });
+    const page = await context.newPage();
+    await ready(page, address);
+    await page.selectOption("#language", "en");
+    return { context, page };
+  }
+
+  const source = await openProfile();
+  let backup;
+  try {
+    backup = await source.page.evaluate(async () => {
+      const location = await window.DetWeaveSelectProjectFolder();
+      const response = await fetch("/api/projects", {
+        method: "POST", body: JSON.stringify({ title: "Project moved across profiles", location_id: location.id }),
+      });
+      const project = await response.json();
+      const name = project.folder.split("/").at(-1);
+      const root = await navigator.storage.getDirectory();
+      const picked = await root.getDirectoryHandle("qa-relinked-folder");
+      const folder = await picked.getDirectoryHandle(name);
+      const bytes = [...new Uint8Array(await (await (await folder.getFileHandle("project.json")).getFile()).arrayBuffer())];
+      return { project, name, bytes, archive: window.DetWeavePortable.call("snapshot") };
+    });
+  } finally {
+    await source.context.close();
+  }
+
+  const target = await openProfile();
+  try {
+    const { page } = target;
+    async function seedDisk(rootName, folderName, metadata) {
+      await page.evaluate(async ({ rootName, folderName, metadata }) => {
+        const root = await navigator.storage.getDirectory();
+        const picked = await root.getDirectoryHandle(rootName, { create: true });
+        const folder = await picked.getDirectoryHandle(folderName, { create: true });
+        const stream = await (await folder.getFileHandle("project.json", { create: true })).createWritable();
+        await stream.write(typeof metadata === "string" ? metadata : Uint8Array.from(metadata));
+        await stream.close();
+      }, { rootName, folderName, metadata });
+    }
+    const api = (route, body) => page.evaluate(async ({ route, body }) => {
+      const response = await fetch(route, body ? { method: "POST", body: JSON.stringify(body) } : {});
+      if (!response.ok) throw new Error(route + " returned " + response.status + ": " + await response.text());
+      return response.json();
+    }, { route, body });
+    await seedDisk("qa-relinked-folder", backup.name, backup.bytes);
+    await page.evaluate(async (archive) => {
+      window.DetWeavePortable.call("restore", { archive });
+      await window.DetWeavePortable.persist();
+    }, backup.archive);
+    await page.reload();
+    await waitForReady(page);
+
+    const projectPath = "/api/projects/" + backup.project.id;
+    assert.match((await api(projectPath)).folder, /^Restored browser folder copy/);
+    const selected = await page.evaluate(() => window.DetWeaveSelectProjectFolder());
+    assert.equal(selected.id, backup.project.location_id, "Reconnecting must reuse the restored location ID");
+    assert.equal((await api("/api/projects")).projects.length, 1, "No duplicate project may be imported");
+    assert.equal((await api(projectPath)).folder, "qa-relinked-folder/" + backup.name);
+    const renamed = await api(projectPath, { title: "Saved after reconnecting" });
+    const diskTitle = await page.evaluate(async (name) => {
+      const root = await navigator.storage.getDirectory();
+      const picked = await root.getDirectoryHandle("qa-relinked-folder");
+      const folder = await picked.getDirectoryHandle(name);
+      return JSON.parse(await (await (await folder.getFileHandle("project.json")).getFile()).text()).title;
+    }, backup.name);
+    assert.equal(diskTitle, renamed.title);
+
+    await seedDisk("qa-other-folder", backup.name, backup.bytes);
+    await page.evaluate(() => { window.qaPickedRoot = "qa-other-folder"; });
+    await assert.rejects(page.evaluate(() => window.DetWeaveSelectProjectFolder()), /already registered elsewhere/);
+    const browserProject = await api("/api/projects", { title: "Browser-only", location_id: "default" });
+    await seedDisk("qa-default-copy", "Duplicate -- " + browserProject.id, JSON.stringify({ schema_version: 1, id: browserProject.id }));
+    await page.evaluate(() => { window.qaPickedRoot = "qa-default-copy"; });
+    await assert.rejects(page.evaluate(() => window.DetWeaveSelectProjectFolder()), /already registered elsewhere/);
+    assert.equal((await api("/api/projects")).projects.length, 2);
+    assert.equal((await api("/api/projects/locations")).locations.length, 2, "Conflicting selections must not register a location");
+  } finally {
+    await target.context.close();
+  }
+}
+
 (async () => {
   const html = await fs.readFile(htmlPath);
   const server = http.createServer((request, response) => {
@@ -228,7 +318,8 @@ async function checkDirectoryMirror(browser, address) {
     });
     await checkDirectFile(browser);
     await checkDirectoryMirror(browser, "http://127.0.0.1:" + server.address().port + "/");
-    console.log("Standalone location QA passed: offline file, reload, Schema, explicit and recent locations, real OPFS mirror, permission denial, external conflicts, ZIP, mobile.");
+    await checkRestoredDirectoryRelink(browser, "http://127.0.0.1:" + server.address().port + "/");
+    console.log("Standalone location QA passed: offline file, reload, Schema, locations, OPFS mirror, revoked permission, external conflicts, restored-folder relinking, duplicate rejection, ZIP, mobile.");
   } finally {
     if (browser) await browser.close();
     await new Promise((resolve) => server.close(resolve));
