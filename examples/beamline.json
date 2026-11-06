@@ -1,0 +1,125 @@
+{
+  "schema_version": "0.1",
+  "title": "圆管与硅片束流测试结构",
+  "source_text": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+  "world": {
+    "size_mm": [
+      400,
+      400,
+      400
+    ],
+    "material": "G4_AIR"
+  },
+  "volumes": [
+    {
+      "id": "pipe",
+      "shape": {
+        "type": "tube",
+        "rmin_mm": 20,
+        "rmax_mm": 22,
+        "length_mm": 100
+      },
+      "material": "G4_Al"
+    },
+    {
+      "id": "chip",
+      "shape": {
+        "type": "box",
+        "size_mm": [
+          10,
+          10,
+          1
+        ]
+      },
+      "material": "G4_Si"
+    }
+  ],
+  "placements": [
+    {
+      "id": "pipe",
+      "volume": "pipe",
+      "parent": "world",
+      "position_mm": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "chip",
+      "volume": "chip",
+      "parent": "world",
+      "position_mm": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "evidence": {
+    "world.size_mm": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "world.material": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "volumes.pipe.shape": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "volumes.pipe.material": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "volumes.chip.shape": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "volumes.chip.material": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "placements.pipe.volume": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "placements.pipe.parent": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "placements.pipe.position_mm": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "placements.chip.volume": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "placements.chip.parent": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    },
+    "placements.chip.position_mm": {
+      "status": "stated",
+      "quote": "Synthetic beam test: world is a 400 x 400 x 400 mm G4_AIR box. An aluminium tube (G4_Al), inner radius 20 mm, outer radius 22 mm, full length 100 mm, is placed in world at (0,0,0) mm with z axis. A silicon box (G4_Si), full dimensions 10 x 10 x 1 mm, is placed in world at (0,0,0) mm inside the bore. No rotations, fields, optical surfaces or readout requested.",
+      "note": "Explicit synthetic source."
+    }
+  },
+  "questions": [],
+  "notes": [
+    "Synthetic geometry-only fixture."
+  ]
+}

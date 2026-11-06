@@ -1,0 +1,47 @@
+/* Optional browser checks: npm install --no-save playwright, then node scripts/check_ui.cjs */
+const {chromium}=require(process.env.DETWEAVE_PLAYWRIGHT || 'playwright');
+const fs=require('fs');const path=require('path');const assert=require('assert');
+(async()=>{
+ const out=path.resolve('local/browser');fs.mkdirSync(out,{recursive:true});
+ const browser=await chromium.launch({headless:true, ...(process.env.DETWEAVE_CHROME ? {executablePath:process.env.DETWEAVE_CHROME} : {})});
+ const page=await browser.newPage({viewport:{width:1440,height:1100}});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8765');
+ await page.waitForFunction(()=>document.querySelector('#export') && !document.querySelector('#export').disabled);
+ await page.selectOption('#examples','sampling');
+ await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('8'));
+ await page.waitForFunction(()=>!document.querySelector('#export').disabled);
+ await page.screenshot({path:out+'/desktop.png',fullPage:true});
+ assert((await page.locator('#check-strip').innerText()).includes('未运行') || (await page.locator('#check-strip').innerText()).includes('未执行'));
+ for(const plane of ['xz','yz','xy']){await page.click(`[data-view="${plane}"]`);assert(await page.locator('#drawing svg').count());}
+ await page.click('[data-view="3d"]');
+ const canvas=page.locator('#scene');const before=await canvas.screenshot();
+ const box=await canvas.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+80,box.y+box.height/2+40,{steps:10});await page.mouse.up();
+ const after=await canvas.screenshot();assert(!before.equals(after),'3D orbit had no visual effect');
+ async function download(button,name){const event=page.waitForEvent('download');await page.click(button);const file=await event;await file.saveAs(out+'/'+name);return fs.readFileSync(out+'/'+name,'utf8');}
+ const svg=await download('#svg-export','preview.svg');assert(svg.includes('<svg'));
+ const html=await download('#html-export','preview.html');assert(html.includes('<canvas'));
+ const preview=await browser.newPage();const external=[];preview.on('request',r=>{if(/^https?:/.test(r.url()))external.push(r.url());});
+ preview.on('pageerror',e=>errors.push('offline: '+e.message));
+ await preview.goto('file://'+out+'/preview.html');await preview.screenshot({path:out+'/offline.png'});assert.equal(external.length,0);await preview.close();
+ const zip=page.waitForEvent('download');await page.click('#export');await (await zip).saveAs(out+'/project.zip');assert(fs.readFileSync(out+'/project.zip').subarray(0,2).toString()==='PK');
+ await page.selectOption('#provider','ark-coding');assert.equal(await page.inputValue('#base-url'),'https://ark.cn-beijing.volces.com/api/coding/v3');assert.equal(await page.inputValue('#model-name'),'ark-code-latest');
+ await page.fill('#api-key','DUMMY-SECRET-NOT-REAL');
+ const project=await download('#project-download','project.json');assert(!project.includes('DUMMY-SECRET'));
+ await page.click('#save-local');assert(!(await page.evaluate(()=>JSON.stringify(localStorage))).includes('DUMMY-SECRET'));
+ await page.click('#forget-local');assert.equal(await page.evaluate(()=>localStorage.length),0);
+ await page.selectOption('#provider','demo');
+ await page.fill('#source-text','任意不完整讨论，不是固定示例');assert(await page.isDisabled('#export'));
+ await page.click('#extract');await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('只识别内置示例'));
+ assert(await page.isDisabled('#export'));
+ await page.selectOption('#examples','sampling');await page.waitForFunction(()=>!document.querySelector('#export').disabled);
+ await page.locator('#json-panel summary').click();
+ const model=JSON.parse(await page.inputValue('#model-json'));model.volumes[0].shape.size_mm[0]=81;
+ await page.fill('#model-json',JSON.stringify(model));assert(await page.isDisabled('#export'));
+ await page.click('#apply-json');await page.waitForFunction(()=>document.querySelector('#issues').textContent.includes('assum') || document.querySelector('#issues').textContent.includes('修改') || document.querySelector('#stage').textContent.includes('草案'));
+ assert(await page.isDisabled('#export'));
+ await page.click('#undo');await page.waitForFunction(()=>!document.querySelector('#export').disabled);
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:out+'/mobile.png',fullPage:true});
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Mobile layout overflows');
+ assert.deepEqual(errors,[]);await browser.close();console.log('UI checks passed: sample, projections, orbit, SVG/HTML/ZIP, offline preview, key privacy, Ark preset, draft gates, undo, mobile.');
+})().catch(e=>{console.error(e);process.exit(1);});

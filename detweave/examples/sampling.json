@@ -1,0 +1,153 @@
+{
+  "schema_version": "0.1",
+  "title": "四周期钨／硅采样结构",
+  "source_text": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+  "world": {
+    "size_mm": [
+      200,
+      200,
+      200
+    ],
+    "material": "G4_AIR"
+  },
+  "volumes": [
+    {
+      "id": "absorber",
+      "shape": {
+        "type": "box",
+        "size_mm": [
+          80,
+          60,
+          1
+        ]
+      },
+      "material": "G4_W"
+    },
+    {
+      "id": "sensor",
+      "shape": {
+        "type": "box",
+        "size_mm": [
+          80,
+          60,
+          2
+        ]
+      },
+      "material": "G4_Si"
+    }
+  ],
+  "placements": [
+    {
+      "id": "absorber",
+      "volume": "absorber",
+      "parent": "world",
+      "position_mm": [
+        0,
+        0,
+        -5.5
+      ],
+      "repeat": {
+        "count": 4,
+        "step_mm": [
+          0,
+          0,
+          3
+        ]
+      }
+    },
+    {
+      "id": "sensor",
+      "volume": "sensor",
+      "parent": "world",
+      "position_mm": [
+        0,
+        0,
+        -4
+      ],
+      "repeat": {
+        "count": 4,
+        "step_mm": [
+          0,
+          0,
+          3
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "world.size_mm": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "world.material": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "volumes.absorber.shape": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "volumes.absorber.material": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "volumes.sensor.shape": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "volumes.sensor.material": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "placements.absorber.volume": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "placements.absorber.parent": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "placements.absorber.position_mm": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "placements.absorber.repeat": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "placements.sensor.volume": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "placements.sensor.parent": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "placements.sensor.position_mm": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    },
+    "placements.sensor.repeat": {
+      "status": "stated",
+      "quote": "Synthetic design example — not an experimental detector.\nBuild four tungsten/silicon periods along z. All dimensions below are full lengths in mm.\nThe world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.\nEach tungsten plate is a box 80 × 60 × 1 mm, material G4_W.\nEach silicon plate is a box 80 × 60 × 2 mm, material G4_Si.\nPlace both plate types directly in world. All x and y centres are 0 mm.\nThe first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.\nThe first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.\nThis makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.",
+      "note": "Source explicitly specifies this value; quote matching is not semantic validation."
+    }
+  },
+  "questions": [],
+  "notes": [
+    "Synthetic geometry-only fixture. Silicon is not configured as a sensitive detector."
+  ]
+}

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "detweave"
+version = "0.1.0"
+description = "Conversation-driven detector geometry modelling and deterministic export"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["jsonschema>=4.18,<5"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+detweave = "detweave.__main__:main"
+
+[tool.setuptools.package-data]
+detweave = ["web/*", "templates/*", "schema.json", "materials.xml", "examples/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["detweave*"]

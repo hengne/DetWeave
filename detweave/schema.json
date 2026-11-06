@@ -1,0 +1,299 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "source_text": {
+      "type": "string",
+      "maxLength": 100000
+    },
+    "world": {
+      "type": "object",
+      "properties": {
+        "size_mm": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 10000000.0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "material": {
+          "enum": [
+            "G4_AIR",
+            "G4_Galactic",
+            "G4_W",
+            "G4_Pb",
+            "G4_Si",
+            "G4_Al",
+            "G4_Fe",
+            "G4_Cu",
+            "G4_POLYSTYRENE",
+            "G4_SILICON_DIOXIDE",
+            "G4_CESIUM_IODIDE",
+            "G4_PbWO4"
+          ]
+        }
+      },
+      "required": [
+        "size_mm",
+        "material"
+      ],
+      "additionalProperties": false
+    },
+    "volumes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+          },
+          "shape": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "box"
+                  },
+                  "size_mm": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 10000000.0
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                },
+                "required": [
+                  "type",
+                  "size_mm"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "tube"
+                  },
+                  "rmin_mm": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10000000.0
+                  },
+                  "rmax_mm": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 10000000.0
+                  },
+                  "length_mm": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 10000000.0
+                  }
+                },
+                "required": [
+                  "type",
+                  "rmin_mm",
+                  "rmax_mm",
+                  "length_mm"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "material": {
+            "enum": [
+              "G4_AIR",
+              "G4_Galactic",
+              "G4_W",
+              "G4_Pb",
+              "G4_Si",
+              "G4_Al",
+              "G4_Fe",
+              "G4_Cu",
+              "G4_POLYSTYRENE",
+              "G4_SILICON_DIOXIDE",
+              "G4_CESIUM_IODIDE",
+              "G4_PbWO4"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "shape",
+          "material"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "placements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+          },
+          "volume": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+          },
+          "parent": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+          },
+          "position_mm": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": -10000000.0,
+              "maximum": 10000000.0
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "repeat": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 500
+              },
+              "step_mm": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": -10000000.0,
+                  "maximum": 10000000.0
+                },
+                "minItems": 3,
+                "maxItems": 3
+              }
+            },
+            "required": [
+              "count",
+              "step_mm"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "volume",
+          "parent",
+          "position_mm"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 500
+    },
+    "evidence": {
+      "type": "object",
+      "maxProperties": 3000,
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "stated",
+              "confirmed",
+              "derived",
+              "assumed",
+              "unresolved"
+            ]
+          },
+          "quote": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "status",
+          "quote",
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "minItems": 0,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "targets"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "minItems": 0,
+      "maxItems": 100
+    }
+  },
+  "required": [
+    "schema_version",
+    "title",
+    "source_text",
+    "world",
+    "volumes",
+    "placements",
+    "evidence",
+    "questions",
+    "notes"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hengne/DetWeave/schema/0.1",
+  "title": "DetWeave geometry IR v0.1"
+}

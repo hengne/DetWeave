@@ -1,0 +1,9 @@
+Synthetic design example — not an experimental detector.
+Build four tungsten/silicon periods along z. All dimensions below are full lengths in mm.
+The world is a 200 × 200 × 200 mm G4_AIR box, centred at the global origin.
+Each tungsten plate is a box 80 × 60 × 1 mm, material G4_W.
+Each silicon plate is a box 80 × 60 × 2 mm, material G4_Si.
+Place both plate types directly in world. All x and y centres are 0 mm.
+The first tungsten centre is z = -5.5 mm; repeat 4 times with step (0,0,3) mm.
+The first silicon centre is z = -4 mm; repeat 4 times with step (0,0,3) mm.
+This makes a 12 mm stack, with touching interfaces and no gaps. No rotations, optical properties or sensitive detectors are requested.

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="从设计讨论提取探测器几何，核对参数来源并导出。">
+  <title>DetWeave · 探测器几何工作台</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="shell masthead-inner">
+      <a class="identity" href="/" aria-label="DetWeave 首页">
+        <svg class="brand-mark" viewBox="0 0 36 36" aria-hidden="true">
+          <path d="m18 4 13 7.5v13L18 32 5 24.5v-13L18 4Z M5 11.5 18 19l13-7.5 M18 19v13 M12 7.5l13 7.5v13" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>
+          <path d="M12 15.5v13M24.5 7.75 11 15.5" fill="none" stroke="currentColor" stroke-width="1.35" opacity=".48"/>
+        </svg>
+        <span>DetWeave<small>DETECTOR GEOMETRY</small></span>
+      </a>
+      <div class="masthead-tools">
+        <span class="local-indicator"><i></i> 本地工作台</span>
+        <a class="quiet header-schema" href="/api/schema" target="_blank" rel="noopener">IR Schema <span aria-hidden="true">↗</span></a>
+        <button type="button" class="button compact" id="import">导入项目</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="main-title">
+      <div>
+        <p class="eyebrow"><span>01 /</span> GEOMETRY WORKBENCH</p>
+        <h1 id="main-title">探测器几何工作台</h1>
+        <p class="lede">把设计讨论整理成可追溯的几何草稿，在导出前核对结构、尺寸与原文依据。</p>
+      </div>
+      <div class="scope">
+        <span class="chip">IR v0.1</span>
+        <span class="chip">mm · XYZ</span>
+        <span class="chip">盒体 / 全圆管</span>
+      </div>
+    </section>
+
+    <div class="workbench">
+      <section class="panel source" aria-labelledby="source-title">
+        <header class="panel-head">
+          <div class="section-id">01</div>
+          <div><h2 id="source-title">设计讨论</h2><p>讨论原文和补充说明</p></div>
+        </header>
+        <div class="source-body">
+          <div class="example-field">
+            <label for="examples">示例</label>
+            <select id="examples" aria-label="加载示例"><option value="">选择一个示例</option></select>
+          </div>
+          <label for="source-text" class="sr-only">设计讨论原文</label>
+          <textarea id="source-text" maxlength="100000" spellcheck="false" placeholder="粘贴关于尺寸、材料、摆放和重复阵列的设计讨论。"></textarea>
+          <div class="source-meta"><span id="dirty-label"></span><span id="text-length">0 字符</span></div>
+
+          <div class="provider">
+            <label for="provider">提取方式</label>
+            <select id="provider">
+              <option value="demo">离线演示 · 固定示例</option>
+              <option value="ark-coding">火山 Coding Plan · OpenAI 兼容</option>
+              <option value="openai">OpenAI / 兼容接口</option>
+              <option value="anthropic">Anthropic / 兼容接口</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+            <div id="provider-fields" class="provider-fields" hidden>
+              <label for="base-url">Base URL <span class="muted">可选</span></label>
+              <input id="base-url" type="url" autocomplete="off" placeholder="使用服务端默认地址">
+              <label for="model-name">模型 ID</label>
+              <input id="model-name" type="text" autocomplete="off" placeholder="输入所用模型 ID">
+              <datalist id="ark-coding-models">
+                <option value="ark-code-latest"></option>
+                <option value="doubao-seed-evolving"></option>
+                <option value="glm-5.3"></option>
+                <option value="deepseek-v4-flash"></option>
+              </datalist>
+              <label for="api-key">API Key <span class="muted">仅本次会话</span></label>
+              <input id="api-key" type="password" autocomplete="off" placeholder="输入该服务的 API Key">
+            </div>
+            <p id="provider-help" class="fine-print">仅匹配内置合成示例，适合离线体验。</p>
+          </div>
+          <button type="button" class="button primary extract" id="extract"><span>提取几何草稿</span><span aria-hidden="true">→</span></button>
+          <p id="status" class="status" role="status" aria-live="polite">正在加载内置示例…</p>
+        </div>
+      </section>
+
+      <section class="panel geometry" aria-labelledby="geometry-title">
+        <header class="panel-head geometry-head">
+          <div class="section-id">02</div>
+          <div class="grow"><h2 id="geometry-title">几何预览</h2><p id="geometry-subtitle">等待设计模型</p></div>
+          <span id="stage" class="stage neutral">待提取</span>
+        </header>
+        <div class="preview-tools">
+          <div class="segmented" role="group" aria-label="视图">
+            <button type="button" data-view="3d" aria-pressed="true">3D</button>
+            <button type="button" data-view="xz" aria-pressed="false">正视 XZ</button>
+            <button type="button" data-view="yz" aria-pressed="false">侧视 YZ</button>
+            <button type="button" data-view="xy" aria-pressed="false">端视 XY</button>
+          </div>
+          <div class="view-controls">
+            <label class="toggle"><input id="world" type="checkbox"> World</label>
+            <button type="button" id="reset-view" class="button compact quiet">复位视角</button>
+          </div>
+        </div>
+        <div class="viewport">
+          <canvas id="scene" tabindex="0" aria-label="探测器三维预览。用方向键旋转，用加减键缩放，Home 键复位。"></canvas>
+          <div id="drawing" hidden></div>
+          <div class="view-overlay" id="view-mode">3D / ORTHOGRAPHIC</div>
+          <div id="view-empty" class="view-empty"><span>XYZ</span><p>加载示例或提取草稿，开始查看几何</p></div>
+          <div id="view-help" class="view-help">拖动旋转 · 滚动缩放</div>
+        </div>
+        <div class="geometry-foot">
+          <div id="legend" class="legend"><span class="muted">材料图例</span></div>
+          <div class="view-exports"><button type="button" id="svg-export" class="button compact">导出 SVG</button><button type="button" id="html-export" class="button compact">下载离线 3D</button></div>
+        </div>
+        <div id="check-strip" class="check-strip" aria-label="验证状态"></div>
+      </section>
+    </div>
+
+    <section class="panel review" aria-labelledby="review-title">
+      <header class="panel-head review-head">
+        <div class="section-id">03</div>
+        <div class="grow"><h2 id="review-title">结构与核查</h2><p>逐项追溯参数来源，处理导出阻塞</p></div>
+        <button type="button" id="validate" class="button compact">重新验证</button>
+      </header>
+      <div class="review-grid">
+        <div class="structure">
+          <div class="subhead"><h3>结构树</h3><span id="counts" class="muted mono">0 实例</span></div>
+          <div id="tree" class="tree"><p class="empty-text">当前没有几何模型。</p></div>
+        </div>
+        <div class="inspector">
+          <div class="subhead"><h3>参数与依据</h3><span id="selection-kind" class="muted mono">—</span></div>
+          <div id="details" class="details"><p class="empty-text">选中结构或投影中的对象，查看尺寸、材料和证据。</p></div>
+        </div>
+        <div class="review-issues">
+          <div class="subhead"><h3>待核查</h3><span id="issue-count" class="muted mono">—</span></div>
+          <div id="issues" class="issues"><p class="empty-text">提取或导入模型后显示验证结果。</p></div>
+        </div>
+      </div>
+      <details class="json-section" id="json-panel">
+        <summary>编辑几何 IR <span class="mono">JSON</span></summary>
+        <div class="json-body">
+          <label for="model-json">几何模型 JSON</label>
+          <textarea id="model-json" spellcheck="false" aria-describedby="json-help"></textarea>
+          <div class="json-actions">
+            <p id="json-help" class="fine-print">应用前校验结构。修改几何值后，重新核对对应字段的依据。</p>
+            <button type="button" id="reset-json" class="button compact">还原编辑框</button>
+            <button type="button" id="apply-json" class="button compact primary">验证并应用</button>
+          </div>
+          <p id="json-error" class="fine-print error" role="status"></p>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel delivery" aria-labelledby="delivery-title">
+      <header class="panel-head">
+        <div class="section-id">04</div>
+        <div class="grow"><h2 id="delivery-title">项目与导出</h2><p id="export-help">几何通过结构、解析几何及证据检查后可导出。</p></div>
+        <div class="project-actions">
+          <button type="button" id="undo" class="button compact">撤销上一步</button>
+          <button type="button" id="clear" class="button compact quiet">清空</button>
+          <button type="button" id="save-local" class="button compact">保存到本浏览器</button>
+          <button type="button" id="project-download" class="button compact">下载项目 JSON</button>
+          <button type="button" id="export" class="button compact primary">导出几何包 ↓</button>
+        </div>
+      </header>
+      <div class="delivery-note">
+        <span id="local-save-state">浏览器默认不保存讨论内容。项目 JSON 包含讨论原文。</span>
+        <button type="button" id="forget-local" class="text-button" hidden>删除浏览器副本</button>
+      </div>
+      <div id="provenance" class="provenance" hidden></div>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <span>DetWeave / 0.1</span>
+    <span>世界坐标 · 毫米 · 平移放置</span>
+  </footer>
+</body>
+</html>
