@@ -1,5 +1,6 @@
 """Boot an iPhone simulator and verify the built app's loopback API."""
 import json
+import os
 import re
 import subprocess
 import sys
@@ -20,12 +21,13 @@ def main():
     iphones = [d for group in devices.values() for d in group if d.get('isAvailable') and d['name'].startswith('iPhone')]
     if not iphones:
         raise RuntimeError('No available iPhone simulator')
-    device = iphones[0]['udid']
-    print('Simulator:', iphones[0]['name'], device, flush=True)
+    chosen = next((d for d in iphones if d['udid'] == os.environ.get('DETWEAVE_SIMULATOR_UDID')), iphones[0])
+    device = chosen['udid']
+    print('Simulator:', chosen['name'], device, flush=True)
     try:
-        if iphones[0]['state'] != 'Booted':
+        if chosen['state'] != 'Booted':
             run('xcrun', 'simctl', 'boot', device, timeout=60)
-        run('xcrun', 'simctl', 'bootstatus', device, '-b', timeout=240)
+        run('xcrun', 'simctl', 'bootstatus', device, '-b', timeout=720)
         run('xcrun', 'simctl', 'install', device, str(app), timeout=120)
         launch = run('xcrun', 'simctl', 'launch', device, 'org.detweave.detweave-native', timeout=60)
         print('Launch:', launch, flush=True)

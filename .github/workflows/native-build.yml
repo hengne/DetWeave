@@ -15,6 +15,11 @@ jobs:
         working-directory: packaging
     steps:
       - uses: actions/checkout@v4
+      - name: Start iPhone simulator while preparing the build
+        run: |
+          DEVICE=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; a=json.load(sys.stdin)["devices"]; print(next(d["udid"] for g in a.values() for d in g if d.get("isAvailable") and d["name"].startswith("iPhone")))')
+          echo "DETWEAVE_SIMULATOR_UDID=$DEVICE" >> "$GITHUB_ENV"
+          xcrun simctl boot "$DEVICE"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
