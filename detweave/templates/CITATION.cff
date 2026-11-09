@@ -3,6 +3,7 @@ message: "Please cite DetWeave in public work that materially uses this software
 type: software
 title: "DetWeave: Conversation-driven detector geometry modelling and validation"
 version: 0.3.0
+date-released: '2026-11-09'
 authors:
   - family-names: Li
     given-names: Hengne

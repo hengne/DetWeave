@@ -90,6 +90,8 @@ try {
     if (-not $report.ready -or -not $report.instances -or $report.checks.schema -ne 'passed') {
         throw 'The installed application failed to validate its bundled geometry example.'
     }
+    & python (Join-Path $PSScriptRoot '../packaging/smoke_service.py') $address --output (Join-Path $MsiDirectory 'DetWeave-Windows-service-smoke.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Native conversation/settings smoke failed.' }
     Write-Host "Installed DetWeave $($health.version) opened a native window and validated $(@($report.instances).Count) fixture instances."
 }
 catch {

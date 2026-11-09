@@ -11,6 +11,7 @@ from .bridge import AndroidExport, DesktopFolderPicker, NativeHandler, PICKER_SC
 
 class DetWeaveApp(toga.App):
     def startup(self):
+        os.environ["DETWEAVE_SETTINGS_DIR"] = str(self.paths.data / "settings")
         # Bind an exclusive ephemeral loopback port for this app instance.
         os.environ["DETWEAVE_PROJECTS_DIR"] = str(
             Path.home() / "Documents" / "DetWeave Projects" if sys.platform == "ios"

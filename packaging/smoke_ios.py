@@ -7,6 +7,7 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
+from smoke_service import check_service
 
 
 def run(*args, timeout=180):
@@ -47,6 +48,9 @@ def main():
                     with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/examples', timeout=3) as response:
                         examples = json.load(response)
                     if health.get('status') == 'ok' and len(examples) >= 2:
+                        result = check_service(f'http://127.0.0.1:{port}')
+                        Path('dist').mkdir(exist_ok=True)
+                        Path('dist/DetWeave-iOS-service-smoke.json').write_text(json.dumps(result,indent=2)+'\n')
                         time.sleep(5)  # Give the WebView time to render before capture.
                         Path('dist').mkdir(exist_ok=True)
                         run('xcrun', 'simctl', 'io', device, 'screenshot', 'dist/DetWeave-iOS-simulator-smoke.png', timeout=30)

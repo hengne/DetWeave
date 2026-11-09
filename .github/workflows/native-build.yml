@@ -26,10 +26,14 @@ jobs:
       - run: briefcase create macOS --no-input
       - run: briefcase build macOS --no-input
       - run: briefcase package macOS --adhoc-sign --no-input
+      - name: Verify macOS native conversation and settings
+        run: python smoke_macos.py
       - uses: actions/upload-artifact@v4
         with:
           name: DetWeave-macOS-adhoc-candidate
-          path: packaging/dist/*.dmg
+          path: |
+            packaging/dist/*.dmg
+            packaging/dist/DetWeave-macOS-service-smoke.json
           if-no-files-found: error
   ios-simulator:
     if: ${{ inputs.review_approved }}
@@ -72,7 +76,9 @@ jobs:
         if: always()
         with:
           name: DetWeave-iOS-simulator-validation
-          path: packaging/dist/DetWeave-iOS-simulator-*.png
+          path: |
+            packaging/dist/DetWeave-iOS-simulator-*.png
+            packaging/dist/DetWeave-iOS-service-smoke.json
           if-no-files-found: warn
   linux:
     if: ${{ inputs.review_approved }}
@@ -111,7 +117,7 @@ jobs:
             grep -E 'libpython3\.12\.so\.1\.0 => /(usr/)?lib/x86_64-linux-gnu/'
           native_log=$(mktemp)
           env -u LD_LIBRARY_PATH -u PYTHONHOME -u PYTHONPATH \
-            timeout 45s xvfb-run -a /usr/bin/detweave_native >"$native_log" 2>&1 &
+            timeout 90s xvfb-run -a /usr/bin/detweave_native >"$native_log" 2>&1 &
           native_pid=$!
           trap 'kill "$native_pid" 2>/dev/null || true; wait "$native_pid" 2>/dev/null || true; cat "$native_log"; rm -f "$native_log"' EXIT
           python - <<'PY'
@@ -141,8 +147,17 @@ jobs:
           with opener.open(request, timeout=5) as response:
               report = json.load(response)
           assert report["ready"] and report["instances"]
-          print("Installed native application loaded the packaged geometry core and validated its fixture.")
+          from smoke_service import check_service
+          from pathlib import Path
+          result = check_service(url)
+          Path('dist/DetWeave-Linux-service-smoke.json').write_text(json.dumps(result,indent=2)+'\n')
+          print("Installed native application passed conversation and settings checks.")
           PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DetWeave-Linux-service-validation
+          path: packaging/dist/DetWeave-Linux-service-smoke.json
+          if-no-files-found: error
   windows:
     if: ${{ inputs.review_approved }}
     runs-on: windows-latest
@@ -167,6 +182,11 @@ jobs:
         timeout-minutes: 5
         shell: pwsh
         run: ./scripts/smoke_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DetWeave-Windows-service-validation
+          path: packaging/dist/DetWeave-Windows-service-smoke.json
+          if-no-files-found: error
   android:
     if: ${{ inputs.review_approved }}
     runs-on: ubuntu-latest
