@@ -36,8 +36,8 @@ def test_dd4hep_geometry_and_materials():
             if e.get('name').startswith('DetWeave_unused_table_entry_')}
     assert len(pads) > 82
     assert all(e.get('ref') not in pads for e in materials.iter() if e.get('ref'))
-    assert materials.find("./material[@name='G4_Al']/fraction").get('ref') == 'DetWeave_DetWeaveElement_G4_Al'
-    assert materials.find("./element[@name='DetWeave_DetWeaveElement_G4_Al']/atom") is not None
+    assert materials.find("./material[@name='G4_Al']/fraction").get('ref') == 'DetWeave_Element_G4_Al'
+    assert materials.find("./element[@name='DetWeave_Element_G4_Al']/atom") is not None
     source = files['dd4hep/DetWeave.cpp']
     assert 'Box(50*mm, 40*mm, 30*mm)' in source
     assert 'Tube(1*mm, 10*mm, 10*mm)' in source

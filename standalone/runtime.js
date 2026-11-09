@@ -107,11 +107,14 @@ async function startDetWeavePortable(bundle) {
         result=await work();
         const snapshot=call('snapshot');
         await db('readwrite',store=>{
-          if (folderHandle) store.put([...new Map(handles).set(result.handleId,folderHandle)],'handles');
+          if (folderHandle) {
+            store.put([...new Map(handles).set(result.handleId,folderHandle)],'handles');
+            store.put([...new Map([...modifiedFiles,...(result.importedFingerprints || [])])],'diskFingerprints');
+          }
           return store.put(snapshot,'snapshot');
         });
       } catch(error) { call('reset',{archive:before}); throw error; }
-      if (folderHandle) handles.set(result.handleId,folderHandle);
+      if (folderHandle) { handles.set(result.handleId,folderHandle); for (const [key,value] of result.importedFingerprints || []) modifiedFiles.set(key,value); }
       try { await mirror(); document.getElementById('portable-storage-warning')?.remove(); }
       catch(error) { warn(error.message); }
       return result;
@@ -126,9 +129,9 @@ async function startDetWeavePortable(bundle) {
     const result = {...value};
     for (const key of ['path', 'folder']) {
       if (typeof result[key] !== 'string') continue;
-      result[key] = result[key].replace('/storage/browser', label('浏览器项目库（请定期导出备份）', 'Browser project library (export backups regularly)'));
-      for (const [id, handle] of handles) result[key] = result[key].replace('/storage/handles/' + id, handle.name);
-      result[key] = result[key].replace(/\/storage\/handles\/[0-9a-f]{32}/g,label('浏览器中恢复的文件夹副本（尚未关联磁盘）','Restored browser folder copy (not linked to disk)'));
+      result[key] = result[key].replace('/storage/browser', () => label('浏览器项目库（请定期导出备份）', 'Browser project library (export backups regularly)'));
+      for (const [id, handle] of handles) result[key] = result[key].replace('/storage/handles/' + id, () => handle.name);
+      result[key] = result[key].replace(/\/storage\/handles\/[0-9a-f]{32}/g,() => label('浏览器中恢复的文件夹副本（尚未关联磁盘）','Restored browser folder copy (not linked to disk)'));
     }
     if (result.id === 'default' && result.label) result.label = label('浏览器项目库', 'Browser project library');
     for (const [key, child] of Object.entries(result)) if (typeof child === 'object') result[key] = friendly(child);
@@ -167,6 +170,7 @@ async function startDetWeavePortable(bundle) {
       id ||= crypto.randomUUID().replaceAll('-', '');
       const location = call('register', {handle_id:id, label:handle.name});
       let imported = 0;
+      const importedFingerprints = [];
       async function readTree(directory, path, depth = 0) {
         if (depth > 6) throw new Error('Project folder nesting exceeds limit.');
         python.FS.mkdirTree(path);
@@ -176,7 +180,11 @@ async function startDetWeavePortable(bundle) {
             const file = await entry.getFile(); imported += file.size;
             if (imported > 100_000_000) throw new Error('Project folders exceed 100 MB.');
             const target = path + '/' + entry.name;
-            if (!python.FS.analyzePath(target).exists) python.FS.writeFile(target, new Uint8Array(await file.arrayBuffer()));
+            if (!python.FS.analyzePath(target).exists) {
+              const bytes = new Uint8Array(await file.arrayBuffer());
+              python.FS.writeFile(target, bytes);
+              importedFingerprints.push([target.slice('/storage/handles/'.length), await fingerprint(bytes)]);
+            }
           }
         }
       }
@@ -185,7 +193,7 @@ async function startDetWeavePortable(bundle) {
         await readTree(entry, path);
         for (const child of ['prompts', 'runs', 'exports']) python.FS.mkdirTree(path + '/' + child);
       }
-      return {handleId:id, location};
+      return {handleId:id, location, importedFingerprints};
     }, handle);
     return friendly(chosen.location);
   };
@@ -254,7 +262,7 @@ async function startDetWeavePortable(bundle) {
                 let end;
                 while ((end = buffer.indexOf('\n')) !== -1) {
                   const line = buffer.slice(0,end).replace(/\r$/, ''); buffer=buffer.slice(end+1);
-                  if (!line) flush();
+                  if (!line) { flush(); if (doneMarker) break; }
                   else if (line.startsWith('data:')) frame.push(line.slice(5).replace(/^ /,''));
                 }
                 if (buffer.length > 2_000_000 || frame.join('\n').length > 2_000_000) throw new Error('Provider event exceeds size limit.');

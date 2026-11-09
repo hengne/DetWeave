@@ -81,3 +81,10 @@ def test_settings_failure_has_own_diagnostic(settings,server,monkeypatch):
     assert error.value.code==507
     assert body['code']=='provider_settings_storage_error'
     assert str(settings.root) in body['error']
+
+
+def test_storage_error_reports_actual_custom_location(tmp_path):
+    from detweave.settings import settings_error
+    error = PermissionError(13, 'denied', str(tmp_path / 'custom' / 'providers.json'))
+    assert str(tmp_path / 'custom') in settings_error(error)['error']
+    assert str(tmp_path / 'explicit') in settings_error(error, tmp_path / 'explicit')['error']

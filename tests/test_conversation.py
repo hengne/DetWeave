@@ -164,3 +164,56 @@ def test_http_disconnect_cancels_turn_and_keeps_geometry(project,http_server,mon
     assert snapshot['messages'][-1]['status']=='cancelled'
     assert snapshot['current_revision_id']==first['revision_id']
     assert len(snapshot['revisions'])==1
+
+
+def test_manual_edit_is_revision_and_stale_confirmation_rejected(project):
+    journal = Conversations()
+    first = turn(journal, project, examples()[0]['text'])
+    model = copy.deepcopy(first['model'])
+    model['world']['size_mm'][0] += 500
+    saved = ProjectStore().update(project['id'], {'draft':{'text':model['source_text'],'model':model}})
+    assert saved['draft']['model'] == model
+    current = journal.get(project['id'])
+    assert current['current_revision_id'] != first['revision_id']
+    with pytest.raises(ConversationConflict):
+        journal.confirm(project['id'],first['revision_id'],['world.size_mm'])
+    confirmed = journal.confirm(project['id'],current['current_revision_id'],['world.size_mm'])
+    assert journal.current(confirmed)['model']['world']['size_mm'] == model['world']['size_mm']
+
+
+def test_journal_commit_survives_mirror_failure(project, monkeypatch):
+    import detweave.conversation as module
+    journal = Conversations()
+    original_write = module._write
+    def fail_mirror(path, data):
+        if path.name == 'project.json':raise OSError('synthetic mirror failure')
+        return original_write(path,data)
+    monkeypatch.setattr(module,'_write',fail_mirror)
+    first = turn(journal,project,examples()[0]['text'])
+    assert ProjectStore().get(project['id'])['draft']['model'] == first['model']
+    assert journal.current(journal.get(project['id']))['model'] == first['model']
+    monkeypatch.setattr(module,'_write',original_write)
+    journal.get(project['id'])
+    with open(project['folder']+'/project.json') as stream:
+        assert json.load(stream)['draft']['model'] == first['model']
+
+
+def test_finish_rejection_releases_lock_and_records_failure(project):
+    journal=Conversations()
+    provider={'kind':'openai','api_key':'sk-1234'}
+    tid,_=journal.start(project['id'],'Explain geometry',None,provider)
+    with pytest.raises(RunError):
+        journal.finish(project['id'],tid,{'action':'answer','reply':'Token sk-1234 leaked','model':None},{},provider)
+    assert journal.get(project['id'])['messages'][-1]['status']=='failed'
+    next_id,_=journal.start(project['id'],'Retry',None,provider)
+    journal.fail(project['id'],next_id,'cancelled')
+
+
+def test_schema_constants_not_exempt_in_free_text(project):
+    from detweave.projects import model_contains_key
+    sample=copy.deepcopy(examples()[0]['model'])
+    # Shape type is a fixed enum; a note containing the same token is free text.
+    sample['notes']=['box']
+    assert model_contains_key(sample,'box')
+    sample['notes']=['credential sk-1234 disclosed']
+    assert model_contains_key(sample,'sk-1234')

@@ -100,8 +100,10 @@ function changeProviderPreference() {
   const previous=providerPreferences.active;
   if(previous!=='demo' && pending) {
     const profile=currentProviderProfile(previous);
-    providerPreferences.profiles[previous]=profile;
-    queueProviderSave({active:previous,profile});
+    if(Number.isInteger(profile.total_timeout_s) && profile.total_timeout_s>=60 && profile.total_timeout_s<=900) {
+      providerPreferences.profiles[previous]=profile;
+      queueProviderSave({active:previous,profile});
+    }
   }
   providerPreferences.active=$("provider").value;
   applyProviderProfile(providerPreferences.active);
@@ -357,7 +359,7 @@ function setProvider(reset = false) {
 
 function updateThinkingOptions() {
   const required = currentPreset()?.thinking === "ark"
-    && ["glm-5.3", "glm-latest", "kimi-k3"].includes($("model-name").value.trim().toLowerCase());
+    && ["glm-5.3", "glm-latest", "kimi-k3", "kimi-k3.1-pro"].includes($("model-name").value.trim().toLowerCase());
   $("ark-thinking").querySelector('[value="disabled"]').disabled = required;
   if (required && $("ark-thinking").value === "disabled") $("ark-thinking").value = "";
   $("ark-thinking-help").textContent = t(required
@@ -1039,8 +1041,8 @@ function installScene(canvas, data, onSelect = () => {}) {
         if (inner) {
           result.push(
             face([innerLower[i], innerLower[j], innerUpper[j], innerUpper[i]], normal.map((n) => -n), false),
-            face([upper[i], upper[j], innerUpper[j], innerUpper[i]], [0, 0, 1], false),
-            face([lower[i], lower[j], innerLower[j], innerLower[i]], [0, 0, -1], false),
+            face([upper[i], upper[j], innerUpper[j], innerUpper[i]], [0, 0, 1], true),
+            face([lower[i], lower[j], innerLower[j], innerLower[i]], [0, 0, -1], true),
           );
         }
       }
@@ -1601,10 +1603,14 @@ async function applyModelJSON() {
   let model;
   try { model = JSON.parse(jsonInput.value); } catch { throw new Error("JSON 无法解析，请检查括号、引号和逗号。"); }
   let report = await validated(model);
-  if (state.reviewPending && sameValue(model, state.model)) throw new Error("请先根据已记录的答复修改 IR，或重新提取。");
+  if (state.reviewPending && !report.ready && sameValue(model, state.model)) throw new Error("请先根据已记录的答复修改 IR，或重新提取。");
   if (markChangedEvidence(model, state.model)) report = await validated(model);
   const text = isDirty() && model.source_text === state.model.source_text ? sourceInput.value : model.source_text;
-  commit({ model, report, text, provenance: state.provenance });
+  if ($("chat-input") && state.project) {
+    const saved = await api(projectURL(state.project.id), {draft:{text,model,provenance:state.provenance,review_pending:false}});
+    updateProjectDetails(saved);
+    await refreshConversation(true);
+  } else commit({ model, report, text, provenance: state.provenance });
   notify(report.ready ? "IR 已应用，当前检查通过。" : "IR 已应用，仍有待核查项。", "success");
 }
 
@@ -1633,7 +1639,7 @@ async function confirmEvidence(path) {
     status: "confirmed", quote: line, note: t("用户在 DetWeave 参数面板确认了此值。"),
   };
   const report = await validated(model);
-  commit({ model, report, provenance: state.provenance, reviewPending: state.reviewPending });
+  commit({ model, report, provenance: state.provenance, reviewPending: state.reviewPending && !report.ready });
   notify("已记录此参数的用户确认。", "success");
 }
 
@@ -1922,9 +1928,10 @@ $("details").addEventListener("click", (event) => {
 });
 $("issues").addEventListener("click", (event) => {
   const button = event.target.closest("[data-question-action]");
-  if (button && $("chat-input")) {
+  if (button && button.dataset.questionAction === "extract" && $("chat-input")) {
     const index = Number(button.dataset.index);
     const answer = $("answer-" + index).value.trim();
+    if (!answer) { notify("请填写该问题的答复。", "error"); return; }
     $("chat-input").value = t("问题：") + " " + state.model.questions[index].question + "\n" + t("答复：") + " " + answer;
     $("chat-input").focus();
     updateChatControls();

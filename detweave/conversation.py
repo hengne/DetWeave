@@ -11,7 +11,7 @@ from uuid import uuid4
 from .model import validate, VALIDATOR, evidence_paths
 from .providers import SYSTEM, ProviderError, parse_response
 from .projects import (ProjectStore, _LOCK, _read, _write, _json_bytes, _now,
-                       _contains_key, public_provenance)
+                       _contains_key, model_contains_key, public_provenance)
 from .streaming import extract_stream, RunError
 
 _ACTIVE = {}  # project file -> turn ID; serializes mutation within one backend
@@ -59,6 +59,7 @@ class Conversations:
             for message in doc['messages']:
                 if message.get('status') == 'running' and _ACTIVE.get(path) != message['id']:
                     message['status'] = 'interrupted'
+            self._sync_project_draft(project_id, doc)
             return doc
         project = self.store.get(project_id)
         draft = project['draft']
@@ -74,6 +75,49 @@ class Conversations:
             doc['revisions'].append(revision)
             doc['current_revision_id'] = revision['id']
         _write(path, _json_bytes(doc))
+        return doc
+
+    def _sync_project_draft(self, project_id, doc):
+        """Recoverable mirror; conversation.json is the commit/authority."""
+        current = self.current(doc)
+        if current is None:
+            return
+        try:
+            path = self.store._path(project_id)
+            project = self.store._document(path)
+            draft = dict(text=current['model']['source_text'], model=current['model'],
+                         provenance=current.get('provenance'), review_pending=False)
+            if project['draft'] != draft or project['pending_run_id'] is not None:
+                project.update(draft=draft, pending_run_id=None, updated_at=_now())
+                _write(path / 'project.json', _json_bytes(project))
+        except OSError:
+            # Journal is durable; subsequent reads retry the derived mirror.
+            pass
+
+    def apply_draft(self, project_id, draft):
+        """Register an explicit manual save as a revision before updating the mirror."""
+        path = self._path(project_id)
+        if path in _ACTIVE:
+            raise ConversationConflict('Stop the active conversation before applying a manual edit.')
+        doc = self._load(project_id)
+        current = self.current(doc)
+        model = draft.get('model')
+        if current and model == current['model']:
+            return doc
+        if model is None:
+            if current:
+                raise ValueError('Cannot clear a conversation geometry through a draft save.')
+            return doc
+        revision = dict(id=uuid4().hex, parent_id=doc['current_revision_id'],
+                        summary='Applied manual IR edit / 应用手动 IR 修改', model=model,
+                        report=validate(model), provenance=draft.get('provenance'), created_at=_now(),
+                        changes=geometry_changes(current['model'] if current else None, model))
+        doc['revisions'].append(revision)
+        doc['current_revision_id'] = revision['id']
+        doc['messages'].append(dict(id=uuid4().hex, role='user',content=model['source_text'],
+                                   status='imported', action='manual_edit', revision_id=revision['id'],created_at=_now()))
+        _write(path, _json_bytes(doc))
+        self._sync_project_draft(project_id, doc)
         return doc
 
     def get(self, project_id):
@@ -111,34 +155,46 @@ class Conversations:
     def finish(self, project_id, turn_id, proposal, provenance, provider):
         with _LOCK:
             path = self._path(project_id)
-            doc = self._load(project_id)
             if _ACTIVE.get(path) != turn_id:
                 raise ConversationConflict('This turn is no longer active.')
-            message = next(m for m in doc['messages'] if m['id'] == turn_id)
-            key = provider.get('api_key')
-            if key and _contains_key(proposal, key):
-                raise RunError('Provider output contained credentials and was discarded.', 'unsafe_output')
-            revision = None
-            if proposal['action'] == 'revise':
-                model = copy.deepcopy(proposal['model'])
-                previous = self.current(doc)
-                if previous:
-                    preserve_confirmations(previous['model'], model)
-                revision = dict(id=uuid4().hex, parent_id=doc['current_revision_id'], summary=proposal['reply'],
-                                model=model, report=validate(model), provenance=public_provenance(provenance, key), created_at=_now())
-                previous = self.current(doc)
-                revision['changes'] = geometry_changes(previous['model'] if previous else None, model)
-                doc['revisions'].append(revision)
-                doc['current_revision_id'] = revision['id']
-            message['status'] = 'succeeded'
-            doc['messages'].append(dict(id=uuid4().hex, role='assistant', content=proposal['reply'],
-                                        action=proposal['action'], revision_id=revision['id'] if revision else None,
-                                        status='succeeded', created_at=_now()))
-            _write(path, _json_bytes(doc))
-            _ACTIVE.pop(path, None)
-            current = self.current(doc)
-            return dict(conversation=doc, reply=proposal['reply'], revision_id=revision['id'] if revision else None,
-                        **({k:current[k] for k in ('model','report','provenance')} if current else {}))
+            try:
+                doc = self._load(project_id)
+                message = next(m for m in doc['messages'] if m['id'] == turn_id)
+                if proposal.get('action') not in ('revise','answer','clarify') or not isinstance(proposal.get('reply'),str):
+                    raise RunError('Invalid conversation proposal.', 'protocol_error')
+                if proposal['action'] == 'revise' and not VALIDATOR.is_valid(proposal.get('model')):
+                    raise RunError('Invalid geometry schema.', 'schema')
+                if proposal['action'] != 'revise' and proposal.get('model') is not None:
+                    raise RunError('A clarification cannot replace geometry.', 'protocol_error')
+                key = provider.get('api_key')
+                if key and (_contains_key(proposal.get('reply'), key) or model_contains_key(proposal.get('model'), key)):
+                    raise RunError('Provider output contained credentials and was discarded.', 'unsafe_output')
+                revision = None
+                if proposal['action'] == 'revise':
+                    model = copy.deepcopy(proposal['model'])
+                    previous = self.current(doc)
+                    if previous:
+                        preserve_confirmations(previous['model'], model)
+                    revision = dict(id=uuid4().hex, parent_id=doc['current_revision_id'], summary=proposal['reply'],
+                                    model=model, report=validate(model), provenance=public_provenance(provenance, key), created_at=_now())
+                    previous = self.current(doc)
+                    revision['changes'] = geometry_changes(previous['model'] if previous else None, model)
+                    doc['revisions'].append(revision)
+                    doc['current_revision_id'] = revision['id']
+                message['status'] = 'succeeded'
+                doc['messages'].append(dict(id=uuid4().hex, role='assistant', content=proposal['reply'],
+                                            action=proposal['action'], revision_id=revision['id'] if revision else None,
+                                            status='succeeded', created_at=_now()))
+                _write(path, _json_bytes(doc))
+                self._sync_project_draft(project_id, doc)
+                current = self.current(doc)
+                return dict(conversation=doc, reply=proposal['reply'], revision_id=revision['id'] if revision else None,
+                            **({k:current[k] for k in ('model','report','provenance')} if current else {}))
+            except Exception as exc:
+                self.fail(project_id, turn_id, getattr(exc, 'code', 'extraction_error'))
+                raise
+            finally:
+                _ACTIVE.pop(path, None)
 
     def fail(self, project_id, turn_id, code):
         with _LOCK:
@@ -184,6 +240,7 @@ class Conversations:
             doc['messages'].append(dict(id=uuid4().hex,role='user',content=content,status='succeeded',
                                         action='confirm',revision_id=revision['id'],created_at=_now()))
             _write(path,_json_bytes(doc))
+            self._sync_project_draft(project_id, doc)
             return doc
 
     def select(self, project_id, revision_id):
@@ -198,6 +255,7 @@ class Conversations:
             doc['messages'].append(dict(id=uuid4().hex, role='system', content='Restored geometry version / 已恢复几何版本',
                                         revision_id=revision_id, created_at=_now(), status='succeeded'))
             _write(path, _json_bytes(doc))
+            self._sync_project_draft(project_id, doc)
             return doc
 
 
@@ -297,14 +355,9 @@ def preserve_confirmations(previous, proposed):
     for target, evidence in previous['evidence'].items():
         if evidence.get('status') != 'confirmed':
             continue
-        candidate = proposed['evidence'].get(target)
-        if not candidate or candidate.get('status') != 'stated':
-            continue
-        if {k:v for k,v in candidate.items() if k != 'status'} != {k:v for k,v in evidence.items() if k != 'status'}:
-            continue
         try:
             unchanged = field_value(previous,target) == field_value(proposed,target)
         except (KeyError,StopIteration,ValueError):
             unchanged = False
         if unchanged:
-            candidate['status'] = 'confirmed'
+            proposed['evidence'][target] = copy.deepcopy(evidence)

@@ -84,7 +84,7 @@ function acceptConversation(value, geometry = true) {
   $("chat-confirmation").hidden=true;
   if (geometry) {
     const revision = value.revisions.find(r=>r.id===value.current_revision_id);
-    if (revision?.model && revision?.report) commit({model:revision.model,report:revision.report,provenance:publicProvenance(revision.provenance)},false);
+    if (revision?.model && revision?.report) commit({model:clone(revision.model),report:clone(revision.report),provenance:publicProvenance(revision.provenance)},false);
   }
   renderConversation();
 }
@@ -195,7 +195,11 @@ function prepareEvidenceConfirmation(path, value) {
     $("chat-status").textContent = chatLabel('请先在项目中创建几何版本。','Create a geometry revision in a project first.');
     return;
   }
-  pendingEvidenceConfirmation={path,revision_id:conversation.current_revision_id};
+  const current=conversation.revisions.find(r=>r.id===conversation.current_revision_id);
+  if (!current || !sameValue(state.model,current.model) || jsonDirty()) {
+    throw new Error(chatLabel('当前显示的几何与保存版本不一致，请先保存修改或重新打开项目。','The displayed geometry differs from the saved revision. Save changes or reopen the project first.'));
+  }
+  pendingEvidenceConfirmation={path,revision_id:conversation.current_revision_id,model:clone(state.model)};
   $("chat-confirmation-value").textContent=path+' = '+JSON.stringify(value);
   $("chat-confirmation").hidden=false;
   $("chat-confirm-accept").focus({preventScroll:true});
@@ -204,6 +208,9 @@ function prepareEvidenceConfirmation(path, value) {
 $("chat-confirm-dismiss").addEventListener('click',()=>{pendingEvidenceConfirmation=null;$("chat-confirmation").hidden=true;updateChatControls();});
 $("chat-confirm-accept").addEventListener('click',()=>run('正在记录确认…',async()=>{
   const pending=pendingEvidenceConfirmation;if(!pending)return;
+  if (pending.revision_id!==conversation.current_revision_id || !sameValue(state.model,pending.model) || jsonDirty()) {
+    throw new Error(chatLabel('确认期间几何已改变，请重新选择要确认的参数。','Geometry changed during confirmation. Select the parameter again.'));
+  }
   const result=await api(conversationURL()+'/confirm',{revision_id:pending.revision_id,targets:[pending.path]});
   acceptConversation(result.conversation||result,true);
   updateProjectDetails(await api(projectURL(state.project.id)));

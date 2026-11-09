@@ -26,3 +26,17 @@ Schema `0.1` 的唯一来源为 `detweave/schema.json`，由 `scripts/make_schem
 解析重叠检查只检查同级体积，不把合法的母子嵌套判为碰撞。触面不算正体积重叠；
 内部比较容差 1e-7 mm。对于更薄结构，需要重新评估数值尺度与原生检查配置。
 三维视图使用投影与离散网格，不能替代后端几何检查。
+
+### Numerical resolution / 数值分辨范围
+
+The current analytic validator rejects world/box dimensions, tube lengths and tube
+wall thickness below `1e-6 mm` (ten times its maximum comparison tolerance of
+`1e-7 mm`). This is an explicit supported numerical-resolution boundary, **not a
+physical minimum detector feature size**. No dimensions are silently enlarged.
+Direct overlap comparisons additionally bound their tolerance by one quarter of
+the smallest feature, so coincident thin objects cannot disappear under tolerance.
+Near-touching differences below tolerance still require target-engine checks.
+
+当前解析校验器不接受小于 `1e-6 mm` 的世界体积／盒体尺寸、圆管长度和壁厚。这是本
+实现的数值适用范围，不是探测器物理上的最小尺寸限制；程序不会静默放大结构。
+亚容差间隙或交叠仍需在目标几何引擎中验证。

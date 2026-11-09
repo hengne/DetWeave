@@ -11,6 +11,7 @@ SCHEMA = json.loads(Path(__file__).with_name("schema.json").read_text())
 VALIDATOR = Draft202012Validator(SCHEMA)
 MAX_INSTANCES = 1000
 TOL = 1e-7  # mm; numerical comparison tolerance, never a repair
+MIN_FEATURE_MM = 10 * TOL  # supported numerical resolution, not a physics limit
 
 
 def canonical(model):
@@ -87,24 +88,31 @@ def contains(parent, child, pos):
     return outer <= parent["rmax_mm"]+TOL and inner >= parent["rmin_mm"]-TOL
 
 
+def minimum_feature(shape):
+    if shape["type"] == "box":
+        return min(shape["size_mm"])
+    return min(shape["length_mm"], shape["rmax_mm"] - shape["rmin_mm"])
+
+
 def overlaps(a, b):
-    """Exact positive-volume intersection for supported parallel boxes and annuli."""
+    """Positive-volume intersection with tolerance bounded by feature size."""
     sa, sb = a["shape"], b["shape"]
     pa, pb = a["position_mm"], b["position_mm"]
     ha, hb = half_extent(sa), half_extent(sb)
-    if abs(pa[2]-pb[2]) >= ha[2]+hb[2]-TOL:
+    tol = min(TOL, max(0, min(minimum_feature(sa), minimum_feature(sb))) / 4)
+    if abs(pa[2]-pb[2]) >= ha[2]+hb[2]-tol:
         return False
     if sa["type"] == sb["type"] == "box":
-        return all(abs(pa[k]-pb[k]) < ha[k]+hb[k]-TOL for k in (0, 1))
+        return all(abs(pa[k]-pb[k]) < ha[k]+hb[k]-tol for k in (0, 1))
     if sa["type"] == sb["type"] == "tube":
         d = math.hypot(pa[0]-pb[0], pa[1]-pb[1])
-        return d < sa["rmax_mm"]+sb["rmax_mm"]-TOL and d+sa["rmax_mm"] > sb["rmin_mm"]+TOL and d+sb["rmax_mm"] > sa["rmin_mm"]+TOL
+        return d < sa["rmax_mm"]+sb["rmax_mm"]-tol and d+sa["rmax_mm"] > sb["rmin_mm"]+tol and d+sb["rmax_mm"] > sa["rmin_mm"]+tol
     box, tube = (a, b) if sa["type"] == "box" else (b, a)
     dx, dy = [abs(box["position_mm"][k]-tube["position_mm"][k]) for k in (0, 1)]
     hx, hy = half_extent(box["shape"])[:2]
     nearest = math.hypot(max(dx-hx, 0), max(dy-hy, 0))
     farthest = math.hypot(dx+hx, dy+hy)
-    return nearest < tube["shape"]["rmax_mm"]-TOL and farthest > tube["shape"]["rmin_mm"]+TOL
+    return nearest < tube["shape"]["rmax_mm"]-tol and farthest > tube["shape"]["rmin_mm"]+tol
 
 
 def validate(model):
@@ -126,7 +134,11 @@ def validate(model):
         names = [v["id"] for v in values]
         if len(names) != len(set(names)) or "world" in names:
             issue("error", "identifier", collection, "Identifiers must be unique and cannot be 'world'.")
+    if min(model["world"]["size_mm"]) < MIN_FEATURE_MM:
+        issue("error", "dimension", "world.size_mm", f"World dimensions below supported numerical resolution ({MIN_FEATURE_MM:g} mm).")
     for v in model["volumes"]:
+        if minimum_feature(v["shape"]) < MIN_FEATURE_MM:
+            issue("error", "dimension", f"volumes.{v['id']}.shape", f"Solid dimensions and tube wall thickness must be at least {MIN_FEATURE_MM:g} mm for this validator.")
         if v["shape"]["type"] == "tube" and v["shape"]["rmin_mm"] >= v["shape"]["rmax_mm"]:
             issue("error", "radius", f"volumes.{v['id']}", "Tube requires 0 ≤ inner radius < outer radius.")
     for p in model["placements"]:
@@ -194,4 +206,4 @@ def report(model, issues, instances):
                             analytic_geometry="failed" if any(i["level"] == "error" for i in issues) else "passed",
                             evidence="passed" if not any(i["level"] == "blocker" for i in issues) else "needs_review",
                             geant4="not_run", dd4hep="not_run"),
-                scope="Axis-aligned boxes and full z-axis tubes; translations only; analytic comparison tolerance 1e-7 mm. Quote presence is checked, not semantic truth. Backend validation must be run separately.")
+                scope="Axis-aligned boxes and full z-axis tubes; translations only; analytic comparison tolerance at most 1e-7 mm, minimum supported feature 1e-6 mm. Quote presence is checked, not semantic truth. Backend validation must be run separately.")

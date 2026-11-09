@@ -34,7 +34,8 @@ class Source final : public G4VUserPrimaryGeneratorAction {
    G4ThreeVector lo,hi; world->GetLogicalVolume()->GetSolid()->BoundingLimits(lo,hi);
    gun.SetParticleDefinition(G4Geantino::GeantinoDefinition());
    gun.SetParticleEnergy(1*GeV); gun.SetParticleMomentumDirection({0,0,1});
-   gun.SetParticlePosition({0,0,lo.z()+1e-3*mm}); gun.GeneratePrimaryVertex(event);
+   const G4double margin = std::min(1e-3*mm, 0.1*(hi.z()-lo.z()));
+   gun.SetParticlePosition({0,0,lo.z()+margin}); gun.GeneratePrimaryVertex(event);
  }
 };
 int main(int argc,char** argv) {

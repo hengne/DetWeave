@@ -26,6 +26,11 @@ const {chromium}=require(process.env.DETWEAVE_PLAYWRIGHT||'playwright');
   await stop();await launch();await open();await page.waitForFunction(()=>document.querySelector('#api-key').value==='synthetic-ark-key');
   // Keys do not depend on browser origin or backend port.
   const browserStorage=await page.evaluate(()=>JSON.stringify({...localStorage}));assert(!browserStorage.includes('synthetic-ark-key'));
+  const invalidSaves=[];page.on('response',r=>{if(r.url().endsWith('/api/settings/providers')&&r.status()===400)invalidSaves.push(r.status())});
+  await page.fill('#total-timeout','12');await page.selectOption('#provider','deepseek-official');
+  await wait(async()=>(await read()).active==='deepseek-official');
+  assert.deepEqual(invalidSaves,[],'Switching during partial timeout input must not send invalid settings');
+  await page.selectOption('#provider','ark-coding');
   await page.fill('#base-url','https://example.invalid/v1');assert.equal(await page.inputValue('#api-key'),'');
   await wait(async()=>(await read()).profiles['ark-coding']?.base_url==='https://example.invalid/v1');
   await page.click('#provider-forget');await wait(async()=>!(await read()).profiles['ark-coding']);

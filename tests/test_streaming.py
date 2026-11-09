@@ -165,3 +165,45 @@ def test_ndjson_endpoint_delivers_early_activity_then_validated_result():
             assert any(e['type']=='reasoning' for e in events)
             assert events[-1]['type']=='result' and events[-1]['result']['report']['ready']
         finally:app.shutdown();app.server_close();thread.join(timeout=2)
+
+
+def test_nullable_stream_metadata_and_finish_fields():
+    assembled = Assembler('openai', lambda _: None)
+    assembled.feed({'choices': [{'delta': {'content':'{}'}}]})
+    assembled.feed({'choices': None, 'usage': {'total_tokens':3}})
+    assembled.feed({'choices': [{'delta':None, 'finish_reason':'stop'}]})
+    assert assembled.complete() == '{}'
+    gemini = Assembler('gemini', lambda _: None)
+    gemini.feed({'promptFeedback':None, 'candidates':None})
+    gemini.feed({'candidates':[{'content':{'parts':[{'text':'{}'}]}}]})
+    gemini.feed({'candidates':[{'content':None,'finishReason':'STOP'}]})
+    assert gemini.complete() == '{}'
+    anthropic = Assembler('anthropic', lambda _:None)
+    anthropic.feed({'type':'message_start','message':None})
+    anthropic.feed({'type':'content_block_delta','delta':{'type':'text_delta','text':'{}'}})
+    anthropic.feed({'type':'message_delta','delta':{'stop_reason':'end_turn'}})
+    anthropic.feed({'type':'message_delta','delta':None})
+    anthropic.feed({'type':'message_stop'})
+    assert anthropic.complete() == '{}'
+
+
+@pytest.mark.parametrize('kind,data', [
+    ('openai',{'choices':'invalid'}),
+    ('openai',{'choices':[1]}),
+    ('openai',{'choices':[{'delta':[]}]}),
+    ('anthropic',{'type':'message_start','message':'invalid'}),
+    ('gemini',{'promptFeedback':[]}),
+    ('gemini',{'candidates':[{'content':{'parts':[3]}}]}),
+])
+def test_invalid_nested_stream_shapes_fail_as_protocol_errors(kind,data):
+    with pytest.raises(RunError) as error:
+        Assembler(kind,lambda _:None).feed(data)
+    assert error.value.code == 'protocol_error'
+
+
+def test_nullable_frames_never_substitute_for_terminal_marker():
+    assembler=Assembler('openai',lambda _:None)
+    assembler.feed({'choices':[{'delta':{'content':'{}'}}]})
+    assembler.feed({'choices':None})
+    with pytest.raises(RunError) as error:assembler.complete()
+    assert error.value.code == 'incomplete_response'

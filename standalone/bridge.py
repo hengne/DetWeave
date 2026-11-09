@@ -191,6 +191,7 @@ def dw_operation(operation, data):
             headers['anthropic-dangerous-direct-browser-access'] = 'true'
         run['assembler'] = Assembler(kind, run['events'].append)
         total, idle = timeouts(config)
+        run.update(total_s=total, idle_s=idle)
         return dict(url=url, headers=headers, body=body, total_s=total, idle_s=idle)
     if operation == 'release':
         _RUNS.pop(data['operation_id'], None)
@@ -223,7 +224,7 @@ def dw_operation(operation, data):
             return events
         if operation == 'buffered':
             text, usage = response_text(assembler.kind, data['response'])
-            assembler.metadata(data['response'].get('model'), usage)
+            assembler.metadata(data['response'].get('model') or data['response'].get('modelVersion'), usage)
             run['buffered'] = text
             return run['events'] + [dict(type='output', text=text)]
         text = run['buffered'] if 'buffered' in run else assembler.complete()
@@ -231,7 +232,8 @@ def dw_operation(operation, data):
         _prepare_result(run, model, dict(provider=assembler.kind, model=run['provider']['model'],
             response_model=assembler.model, prompt_version=PROMPT_VERSION,
             source_sha256=hashlib.sha256(run['text'].encode()).hexdigest(), duration_s=round(time.monotonic()-run['started'], 2),
-            usage=assembler.usage, transport='browser-fetch', output_bytes=assembler.output_bytes,
+            usage=assembler.usage, transport='browser-fetch', output_bytes=assembler.output_bytes or len(text.encode()),
+            thinking=run['provider'].get('thinking', 'provider_default'), total_timeout_s=run['total_s'], idle_timeout_s=run['idle_s'],
             reasoning_bytes=assembler.reasoning_bytes))
         return None
     if operation == 'snapshot':

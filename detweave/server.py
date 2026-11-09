@@ -140,14 +140,10 @@ class Handler(BaseHTTPRequestHandler):
         elif len(parts) == 5 and parts[4] == "conversation":
             self.send(200, Conversations(store).get(parts[3]))
         elif len(parts) == 4:
-            project = store.get(parts[3])
             conversations = Conversations(store)
             if conversations._path(parts[3]).exists():
-                current = conversations.current(conversations.get(parts[3]))
-                if current:
-                    project["draft"] = {**project["draft"], "model":current["model"],
-                                        "provenance":current["provenance"], "review_pending":False}
-            self.send(200, project)
+                conversations.get(parts[3])  # Recover the materialized draft if needed.
+            self.send(200, store.get(parts[3]))
         elif len(parts) == 6 and parts[4] == "runs":
             self.send(200, store.get_run(parts[3], parts[5]))
         else:
@@ -199,8 +195,10 @@ class Handler(BaseHTTPRequestHandler):
             message = ("The generated model did not match the DetWeave IR schema."
                        if error == "schema" else "The generated output contained credentials and was discarded.")
             raise RunError(message, error)
-        store.finish_run(project_id, run_id, "succeeded", result=safe_result)
-        return {**safe_result, "project_run_id": run_id}
+        if store:
+            store.finish_run(project_id, run_id, "succeeded", result=safe_result)
+            return {**safe_result, "project_run_id": run_id}
+        return safe_result
 
     def extract_request(self, body, stream):
         text = body.get("text")
@@ -218,8 +216,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.stream_extraction(body, store, project_id, run_id)
             else:
                 result = run_extraction(text, provider)
-                if store:
-                    result = self.save_run_result(store, project_id, run_id, result, provider)
+                result = self.save_run_result(store, project_id, run_id, result, provider)
                 self.send(200, result)
         except Exception as exc:
             if store:
@@ -307,16 +304,16 @@ class Handler(BaseHTTPRequestHandler):
                 if event["type"] == "status":stage=event.get("stage",stage)
                 elif event["type"] == "reasoning":stage="thinking"
                 elif event["type"] == "output":stage="generating"
-                if store and event["type"] in ("result", "error"):
+                if event["type"] in ("result", "error"):
                     terminal_handled = True
                     try:
                         if event["type"] == "result":
                             try:
                                 event["result"] = self.save_run_result(store, project_id, run_id, event["result"], provider)
                             except RunError as exc:
-                                self.save_run_failure(store, project_id, run_id, exc)
+                                if store:self.save_run_failure(store, project_id, run_id, exc)
                                 event = dict(type="error", code=exc.code, message=str(exc))
-                        else:
+                        elif store:
                             store.finish_run(project_id, run_id, "failed", error_code=event["code"])
                     except (OSError, ProjectNotFound):
                         event = dict(type="error", code=STORAGE_ERROR["code"], message=STORAGE_ERROR["error"])
@@ -401,7 +398,7 @@ class Handler(BaseHTTPRequestHandler):
                         handled = True
                     except Exception as exc:
                         event = dict(type="error",code=getattr(exc,"code","project_storage_error"),
-                                     message=str(exc)[:500] if isinstance(exc,ProviderError) else STORAGE_ERROR["error"])
+                                     message=str(exc)[:500] if isinstance(exc,(ProviderError,ConversationConflict)) else STORAGE_ERROR["error"])
                 if event["type"] == "error":
                     journal.fail(project_id,turn_id,event["code"])
                     handled = True

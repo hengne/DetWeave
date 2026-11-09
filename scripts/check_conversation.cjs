@@ -139,6 +139,27 @@ const {chromium} = require(process.env.DETWEAVE_PLAYWRIGHT || 'playwright');
     state = await snapshot();
     assert.equal(state.messages.length, messageCount);
     assert.equal(state.current_revision_id, first);
+    // A manual IR edit is a revision before confirmation, never a local-only preview.
+    const editedSize = await page.evaluate(async()=>{
+      const edited=clone(state.model);edited.world.size_mm[0]+=500;
+      jsonInput.value=JSON.stringify(edited);await applyModelJSON();
+      return state.model.world.size_mm;
+    });
+    const manual = await snapshot();
+    assert.deepEqual(manual.revisions.find(r=>r.id===manual.current_revision_id).model.world.size_mm,editedSize);
+    const stale = await page.request.post(route+'/confirm',{headers:{'X-DetWeave':'1'},data:{revision_id:first,targets:['world.size_mm']}});
+    assert.equal(stale.status(),409,'Stale confirmation must not approve different values');
+    await page.evaluate(()=>prepareEvidenceConfirmation('world.size_mm',state.model.world.size_mm));
+    await page.click('#chat-confirm-accept');
+    await page.waitForFunction(()=>!state.busy && state.model.evidence['world.size_mm'].status==='confirmed');
+    assert.deepEqual(await page.evaluate(()=>state.model.world.size_mm),editedSize);
+    // A mismatched displayed preview cannot be confirmed as the stored version.
+    const blocked = await page.evaluate(()=>{
+      const before=clone(state.model);state.model.world.size_mm[0]+=1;
+      try {prepareEvidenceConfirmation('world.size_mm',state.model.world.size_mm);return false;}
+      catch {return true;}finally{state.model=before;}
+    });
+    assert(blocked);
     await page.selectOption('#language', 'en');
     assert.equal(await page.locator('#chat-send').innerText(), 'Send');
     await page.setViewportSize({width:390,height:844});

@@ -35,8 +35,8 @@ def export_dd4hep(model, instances, materials_xml: str) -> dict[str, str]:
         if atom is not None:
             if material.get('Z') is None:
                 raise ValueError('Elemental material has no Z: ' + material.get('name', ''))
-            ename = 'DetWeaveElement_' + material.get('name')
-            element = ET.Element('element', name=ename, formula=ename, Z=material.get('Z'))
+            ename = 'Element_' + material.get('name')
+            element = ET.Element('element', name=ename, formula=material.get('name').removeprefix('G4_'), Z=material.get('Z'))
             element.append(atom)
             material.remove(atom)
             ET.SubElement(material, 'fraction', n='1', ref=ename)
@@ -53,6 +53,8 @@ def export_dd4hep(model, instances, materials_xml: str) -> dict[str, str]:
     names = {e.get('name') for e in materials if e.tag in ('isotope', 'element')}
     for e in materials:
         if e.tag in ('isotope', 'element'):
+            if e.tag == 'element' and not e.get('formula'):
+                e.set('formula', e.get('name'))
             e.set('name', 'DetWeave_' + e.get('name'))
         for child in e:
             if child.get('ref') in names:
@@ -84,8 +86,22 @@ def export_dd4hep(model, instances, materials_xml: str) -> dict[str, str]:
              'static Ref_t create_detector(Detector& detector, xml_h element, SensitiveDetector) {',
              '  xml_det_t x_det(element);', '  DetElement result(x_det.nameStr(), x_det.id());',
              '  Assembly assembly("DetWeaveAssembly");']
+    # Public export callers need not pre-sort. Reject malformed graphs explicitly.
+    pending = list(instances)
+    ids = [inst['id'] for inst in pending]
+    if len(ids) != len(set(ids)) or 'world' in ids:
+        raise ValueError('DD4hep instances require unique non-world identifiers')
+    ordered, placed = [], {'world'}
+    while pending:
+        ready = [inst for inst in pending if inst['parent'] in placed]
+        if not ready:
+            raise ValueError('DD4hep instance hierarchy has a cycle or unknown parent')
+        for inst in ready:
+            ordered.append(inst)
+            placed.add(inst['id'])
+            pending.remove(inst)
     index = {}
-    for n, inst in enumerate(instances):
+    for n, inst in enumerate(ordered):
         index[inst['id']] = n
         shape = inst['shape']
         if shape['type'] == 'box':

@@ -207,6 +207,22 @@ class Assembler:
         if changed:
             self.emit(dict(type="usage", usage=self.usage.copy(), response_model=self.model))
 
+    @staticmethod
+    def object(value):
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise RunError("Provider event contains an invalid object field.", "protocol_error")
+        return value
+
+    @staticmethod
+    def array(value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise RunError("Provider event contains an invalid array field.", "protocol_error")
+        return value
+
     def feed(self, data):
         if not isinstance(data, dict):
             raise RunError("服务商流式事件不是 JSON 对象。", "protocol_error")
@@ -215,10 +231,11 @@ class Assembler:
         self.emit(dict(type="activity"))
         if self.kind == "openai":
             self.metadata(data.get("model"), data.get("usage"))
-            for choice in data.get("choices", []):
+            for raw_choice in self.array(data.get("choices")):
+                choice = self.object(raw_choice)
                 if choice.get("index", 0) != 0:
                     continue
-                delta = choice.get("delta", {})
+                delta = self.object(choice.get("delta"))
                 if delta.get("tool_calls") or delta.get("function_call") or delta.get("refusal"):
                     raise RunError("模型请求工具或拒绝生成，未接受几何。", "completion_rejected")
                 self.append("reasoning", delta.get("reasoning_content") or delta.get("reasoning"))
@@ -229,10 +246,10 @@ class Assembler:
         elif self.kind == "anthropic":
             type_ = data.get("type")
             if type_ == "message_start":
-                msg = data.get("message", {})
+                msg = self.object(data.get("message"))
                 self.metadata(msg.get("model"), msg.get("usage"))
             elif type_ == "content_block_start":
-                block = data.get("content_block", {})
+                block = self.object(data.get("content_block"))
                 if block.get("type") == "text":
                     self.append("output", block.get("text"))
                 elif block.get("type") == "thinking":
@@ -240,25 +257,29 @@ class Assembler:
                 elif block.get("type") != "redacted_thinking":
                     raise RunError("不支持模型返回的内容类型。", "protocol_error")
             elif type_ == "content_block_delta":
-                delta = data.get("delta", {})
+                delta = self.object(data.get("delta"))
                 if delta.get("type") == "text_delta":
                     self.append("output", delta.get("text"))
                 elif delta.get("type") == "thinking_delta":
                     self.append("reasoning", delta.get("thinking"))
                 # signature_delta and redacted content are not reasoning text.
             elif type_ == "message_delta":
-                self.finish_reason = data.get("delta", {}).get("stop_reason")
+                reason = self.object(data.get("delta")).get("stop_reason")
+                if reason is not None:
+                    self.finish_reason = reason
                 self.metadata(usage=data.get("usage"))
             elif type_ == "message_stop":
                 self.terminal = True
         else:
             self.metadata(data.get("modelVersion"), data.get("usageMetadata"))
-            if data.get("promptFeedback", {}).get("blockReason"):
+            if self.object(data.get("promptFeedback")).get("blockReason"):
                 raise RunError("服务商阻止了该请求。", "completion_rejected")
-            for candidate in data.get("candidates", []):
+            for raw_candidate in self.array(data.get("candidates")):
+                candidate = self.object(raw_candidate)
                 if candidate.get("index", 0) != 0:
                     continue
-                for part in candidate.get("content", {}).get("parts", []):
+                for raw_part in self.array(self.object(candidate.get("content")).get("parts")):
+                    part = self.object(raw_part)
                     if "functionCall" in part:
                         raise RunError("模型请求工具，未接受几何。", "completion_rejected")
                     self.append("reasoning" if part.get("thought") else "output", part.get("text"))

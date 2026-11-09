@@ -83,3 +83,18 @@ def test_restore_refuses_conflicts_and_rebuilds_empty_location(bridge):
     bridge.dw_operation("reset", {"archive": snapshot})
     assert bridge._STORE.locations()[1]["available"]
     assert bridge._STORE.get(project["id"]) == project
+
+
+def test_buffered_metadata_counts_bytes_and_timeouts(bridge):
+    fixture = examples()[0]
+    config = dict(kind='gemini',model='synthetic',api_key='synthetic-key',total_timeout_s=120)
+    bridge.dw_operation('start',dict(operation_id='buffered',text=fixture['text'],provider=config))
+    content = json.dumps(fixture['model'],ensure_ascii=False)
+    response = dict(modelVersion='synthetic-response',candidates=[dict(finishReason='STOP',content=dict(parts=[dict(text=content)]))])
+    bridge.dw_operation('buffered',dict(operation_id='buffered',response=response))
+    bridge.dw_operation('finish',dict(operation_id='buffered'))
+    result = bridge.dw_operation('accept',dict(operation_id='buffered'))
+    assert result['provenance']['output_bytes'] == len(content.encode())
+    assert result['provenance']['response_model'] == 'synthetic-response'
+    assert result['provenance']['total_timeout_s'] == 120
+    assert result['provenance']['thinking'] == 'provider_default'

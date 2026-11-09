@@ -53,3 +53,13 @@ Generated with DetWeave by Hengne Li (李衡讷), South China Normal University 
 Contact: Hengne.Li@m.scnu.edu.cn; Hengne.Li@cern.ch.
 See CITATION.cff, NOTICE.txt and LICENSE.txt. DetWeave is for noncommercial use; commercial operation requires separate authorization.
 User input and original output remain the user’s; copied software templates retain applicable notices.
+
+### Material snapshot location
+
+CMake-generated Geant4 executables use the absolute location of the copied
+`materials.gdml` in their build directory, so launching them from a different
+working directory does not change the material lookup. If relocating a binary
+or compiling without the supplied CMake project, set `DETWEAVE_MATERIALS_FILE`
+to the absolute path of the exported material snapshot. A hand-built binary
+without that variable/compile definition falls back to `materials.gdml` in the
+working directory; it never silently substitutes the host material catalogue.

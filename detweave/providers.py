@@ -77,19 +77,58 @@ def request_spec(config, text):
 
 
 def response_text(kind, data):
+    """Accept only explicit successful, complete buffered responses."""
+    def obj(value):
+        if not isinstance(value, dict):
+            raise ProviderError("Provider response contains a missing or invalid object.")
+        return value
+
+    def array(value):
+        if not isinstance(value, list):
+            raise ProviderError("Provider response contains a missing or invalid list.")
+        return value
+
+    def text(value):
+        if not isinstance(value, str):
+            raise ProviderError("Provider response contains invalid text content.")
+        return value
+
+    data = obj(data)
+    if data.get('error'):
+        raise ProviderError("Provider returned an error; no output was accepted.")
     if kind == "openai":
-        choice = data["choices"][0]
-        if choice.get("finish_reason") not in (None, "stop"):
+        choices = array(data.get("choices"))
+        if not choices:
+            raise ProviderError("Provider response contained no choices.")
+        choice = obj(choices[0])
+        if choice.get("finish_reason") != "stop":
             raise ProviderError("Model response was incomplete or refused. Reduce input or choose another model.")
-        return choice["message"]["content"], data.get("usage", {})
+        message = obj(choice.get("message"))
+        if message.get('tool_calls') or message.get('function_call') or message.get('refusal'):
+            raise ProviderError("Model requested a tool or refused; no geometry was accepted.")
+        return text(message.get("content")), data.get("usage", {})
     if kind == "anthropic":
-        if data.get("stop_reason") not in (None, "end_turn"):
+        if data.get("stop_reason") != "end_turn":
             raise ProviderError("Model response was incomplete or requested a tool; extraction was not accepted.")
-        return "".join(p["text"] for p in data["content"] if p.get("type") == "text"), data.get("usage", {})
-    candidate = data["candidates"][0]
-    if candidate.get("finishReason") not in (None, "STOP"):
+        parts = [obj(part) for part in array(data.get("content"))]
+        if any(part.get('type') not in ('text','thinking','redacted_thinking') for part in parts):
+            raise ProviderError("Unsupported provider content type.")
+        return "".join(text(p.get("text")) for p in parts if p.get("type") == "text"), data.get("usage", {})
+    if kind != 'gemini':
+        raise ProviderError("Unsupported provider protocol.")
+    feedback = data.get('promptFeedback')
+    if feedback is not None and obj(feedback).get('blockReason'):
+        raise ProviderError("Gemini blocked this request; no output was accepted.")
+    candidates = array(data.get("candidates"))
+    if not candidates:
+        raise ProviderError("Gemini response contained no candidates.")
+    candidate = obj(candidates[0])
+    if candidate.get("finishReason") != "STOP":
         raise ProviderError("Gemini response was incomplete or blocked.")
-    return "".join(p.get("text", "") for p in candidate["content"]["parts"] if not p.get("thought")), data.get("usageMetadata", {})
+    parts = [obj(part) for part in array(obj(candidate.get("content")).get("parts"))]
+    if any('functionCall' in p for p in parts):
+        raise ProviderError("Gemini requested a tool; no geometry was accepted.")
+    return "".join(text(p.get("text", "")) for p in parts if not p.get("thought")), data.get("usageMetadata", {})
 
 
 def parse_response(content, source):
@@ -97,7 +136,7 @@ def parse_response(content, source):
         raise ProviderError("Provider returned no text JSON.")
     content = content.strip()
     if content.startswith("```"):
-        content = re.sub(r"^```(?:json)?\s*", "", content)
+        content = re.sub(r"^```(?:json)?\s*", "", content, flags=re.IGNORECASE)
         content = re.sub(r"\s*```$", "", content)
     try:
         model = json.loads(content)

@@ -123,6 +123,7 @@ class ProviderSettings:
             fd, temporary = tempfile.mkstemp(prefix='.settings-',dir=self.root)
             try:
                 with os.fdopen(fd,'wb') as stream:
+                    if os.name != 'nt':os.fchmod(stream.fileno(),0o600)
                     stream.write(payload);stream.flush();os.fsync(stream.fileno())
                 os.replace(temporary,self.path)
             finally:
@@ -130,8 +131,8 @@ class ProviderSettings:
             return value
 
 
-def settings_error(exc):
-    root = settings_root()
+def settings_error(exc, root=None):
+    root = Path(root) if root is not None else (Path(exc.filename).parent if getattr(exc,'filename',None) else settings_root())
     return dict(code='provider_settings_storage_error',error=
         'Could not read or save model settings in '+str(root)+
         '. Check permissions; settings were not silently reset. '

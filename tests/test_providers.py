@@ -49,3 +49,22 @@ def test_thinking_is_explicit_opt_in():
     assert 'thinking' not in request_spec(config,'text')[3]
     assert request_spec({**config,'thinking':'disabled'},'text')[3]['thinking']=={'type':'disabled'}
     with pytest.raises(ProviderError):request_spec({**config,'thinking':'invalid'},'text')
+
+
+@pytest.mark.parametrize('kind,data',[
+    ('openai',{'choices':[{'message':{'content':'{}'}}]}),
+    ('anthropic',{'content':[{'type':'text','text':'{}'}]}),
+    ('gemini',{'candidates':[{'content':{'parts':[{'text':'{}'}]}}]}),
+    ('openai',{'choices':None}),
+    ('openai',{'choices':[None]}),
+    ('openai',{'choices':[{'finish_reason':'stop','message':None}]}),
+    ('anthropic',{'stop_reason':'end_turn','content':[3]}),
+    ('gemini',{'promptFeedback':{'blockReason':'SAFETY'}}),
+    ('gemini',{'candidates':[{'finishReason':'STOP','content':None}]}),
+])
+def test_buffered_response_rejects_missing_completion_or_malformed_content(kind,data):
+    with pytest.raises(ProviderError):response_text(kind,data)
+
+
+def test_uppercase_json_fence_is_supported():
+    assert parse_response('```JSON\n{"title":"example"}\n```','source')['title']=='example'

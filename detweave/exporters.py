@@ -11,7 +11,11 @@ from .model import validate, canonical, half_extent
 
 ROOT = Path(__file__).parent
 MATERIALS = (ROOT / "materials.xml").read_text()
-COLORS = {"G4_W":"#6984a8", "G4_Si":"#35d9b2", "G4_Al":"#a5b6cf", "G4_Pb":"#a28bce", "G4_POLYSTYRENE":"#f4b55f"}
+# Match the interactive viewer so exported previews retain material identity.
+COLORS = {"G4_AIR":"#8c9eb4", "G4_Galactic":"#657d99", "G4_W":"#a394de",
+          "G4_Pb":"#8ea9e8", "G4_Si":"#54d8be", "G4_Al":"#a5bbd0",
+          "G4_Fe":"#a9a0af", "G4_Cu":"#ecab74", "G4_POLYSTYRENE":"#f4d283",
+          "G4_SILICON_DIOXIDE":"#74c4f1", "G4_CESIUM_IODIDE":"#ef9abe", "G4_PbWO4":"#cfb1ee"}
 
 
 def number(value):
@@ -57,9 +61,9 @@ def gdml(model, instances):
 
 
 def cpp_geometry(model, instances):
-    lines = ['#include "geometry.hh"', '#include "G4Box.hh"', '#include "G4Tubs.hh"', '#include "G4LogicalVolume.hh"', '#include "G4PVPlacement.hh"', '#include "G4GDMLParser.hh"', '#include "G4Material.hh"', '#include "G4SystemOfUnits.hh"', '#include <stdexcept>', '', 'G4VPhysicalVolume* BuildDetWeaveGeometry() {',
+    lines = ['#include "geometry.hh"', '#include "G4Box.hh"', '#include "G4Tubs.hh"', '#include "G4LogicalVolume.hh"', '#include "G4PVPlacement.hh"', '#include "G4GDMLParser.hh"', '#include "G4Material.hh"', '#include "G4SystemOfUnits.hh"', '#include <stdexcept>', '#include <cstdlib>', '#ifndef DETWEAVE_MATERIALS_FILE', '#define DETWEAVE_MATERIALS_FILE "materials.gdml"', '#endif', '', 'G4VPhysicalVolume* BuildDetWeaveGeometry() {',
              '  // Load the versioned material snapshot; do not rely on host NIST table drift.',
-             '  G4GDMLParser materials;', '  materials.Read("materials.gdml", false);',
+             '  G4GDMLParser materials;', '  const char* materialsPath = std::getenv("DETWEAVE_MATERIALS_FILE");', '  materials.Read(materialsPath && *materialsPath ? materialsPath : DETWEAVE_MATERIALS_FILE, false);',
              '  auto mat = [](const char* name) { auto* m=G4Material::GetMaterial(name, false); if(!m) throw std::runtime_error("Missing material"); return m; };']
     def solid(id_, shape):
         if shape["type"] == "box":

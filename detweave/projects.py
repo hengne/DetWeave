@@ -77,13 +77,35 @@ def _text(value, limit=100_000):
 
 
 def _contains_key(value, key):
+    """Scan generated values, not fixed dictionary field names."""
+    if not isinstance(key, str) or not key:
+        return False
     if isinstance(value, str):
-        return value == key or (len(key) >= 8 and key in value)
+        return key in value if len(key) >= 4 else bool(re.search(r'(?<!\w)' + re.escape(key) + r'(?!\w)', value))
     if isinstance(value, dict):
-        return any(_contains_key(name, key) or _contains_key(item, key) for name, item in value.items())
+        return any(_contains_key(item, key) for item in value.values())
     if isinstance(value, list):
         return any(_contains_key(item, key) for item in value)
     return False
+
+
+def model_contains_key(model, key):
+    # Exempt constants only at their schema-defined paths, never in free text.
+    def scan(value, path=()):
+        if isinstance(value, dict):
+            return any(scan(item, path + (name,)) for name, item in value.items()
+                        if path or name != 'source_text')
+        if isinstance(value, list):
+            return any(scan(item, path + ('*',)) for item in value)
+        if path == ('schema_version',) and value == '0.1': return False
+        if path == ('volumes','*','shape','type') and value in ('box','tube'): return False
+        if len(path) == 3 and path[0] == 'evidence' and path[2] == 'status' and value in ('stated','derived','assumed','unresolved','confirmed'): return False
+        if path == ('placements','*','parent') and value == 'world': return False
+        if path in (('world','material'),('volumes','*','material')) and value in (
+            'G4_AIR','G4_Galactic','G4_W','G4_Pb','G4_Si','G4_Al','G4_Fe','G4_Cu',
+            'G4_POLYSTYRENE','G4_SILICON_DIOXIDE','G4_CESIUM_IODIDE','G4_PbWO4'): return False
+        return _contains_key(value,key)
+    return scan(model)
 
 
 def _public_number(value):
@@ -362,6 +384,13 @@ class ProjectStore:
         return record
 
     def _current_draft(self, path, doc):
+        journal = path / 'conversation.json'
+        if journal.exists():
+            snapshot = _read(journal)
+            current = next((r for r in snapshot['revisions'] if r['id'] == snapshot['current_revision_id']), None)
+            if current:
+                return dict(text=current['model']['source_text'], model=current['model'],
+                            provenance=current.get('provenance'), review_pending=False)
         run_id = doc["pending_run_id"]
         seen = set()
         while run_id:
@@ -422,7 +451,13 @@ class ProjectStore:
             if title is not None and title != doc["title"]:
                 doc["title"] = title
                 changed = True
-            if draft is not None and draft != self._current_draft(path, doc):
+            if draft is not None and (path / 'conversation.json').exists():
+                from .conversation import Conversations
+                Conversations(self).apply_draft(project_id, draft)
+                doc = self._document(path)
+                if title is not None:
+                    doc['title'] = title
+            if draft is not None and (draft != self._current_draft(path, doc) or doc['pending_run_id'] is not None or draft != doc['draft']):
                 if draft["text"] != doc["draft"]["text"]:
                     self._remember_prompt(path, doc, draft["text"])
                 doc.update(draft=draft, pending_run_id=None)
@@ -488,11 +523,13 @@ class ProjectStore:
 
 def persisted_result(result, config):
     """Drop out-of-schema output and credential echoes before writing a completed run."""
+    if not isinstance(result, dict) or not VALIDATOR.is_valid(result.get("model")):
+        return None, "schema"
     if any(issue["code"] in ("schema", "nonfinite") for issue in result["report"]["issues"]):
         return None, "schema"
     key = config.get("api_key")
     if isinstance(key, str) and key:
         model_without_source = {name: item for name, item in result["model"].items() if name != "source_text"}
-        if _contains_key(model_without_source, key) or _contains_key(result["report"], key):
+        if model_contains_key(model_without_source, key):
             return None, "unsafe_output"
     return {**result, "provenance": public_provenance(result["provenance"], key if isinstance(key, str) else None)}, None
