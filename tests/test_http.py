@@ -63,3 +63,17 @@ def test_real_http_transport_with_mock_provider(kind):
         assert provenance['provider']==kind
         assert 'api_key' not in json.dumps(provenance)
     finally:app.shutdown();app.server_close();thread.join(timeout=2)
+
+
+def test_project_location_permission_error_is_actionable(server, monkeypatch):
+    from detweave.projects import ProjectStore
+    def denied(self, path):
+        raise PermissionError(1, 'Operation not permitted', '/restricted/DetWeave')
+    monkeypatch.setattr(ProjectStore, 'register_location', denied)
+    with pytest.raises(urllib.error.HTTPError) as error:
+        request(server+'/api/projects/locations', {'path':'/selected/folder'})
+    assert error.value.code == 507
+    body = json.load(error.value)
+    assert body['code'] == 'project_permission_error'
+    assert '/restricted/DetWeave' in body['error']
+    assert 'DETWEAVE_PROJECTS_DIR' in body['error']

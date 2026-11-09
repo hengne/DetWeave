@@ -24,6 +24,18 @@ SLOTS=threading.BoundedSemaphore(3)
 FOLDER_PICKER_SLOT = threading.Lock()
 STORAGE_ERROR = dict(error="Could not read or save the local project. Check the project folder and available disk space.",
                      code="project_storage_error")
+
+def storage_error(exc):
+    """Expose an actionable local path for filesystem permission failures."""
+    if isinstance(exc, PermissionError):
+        path = str(exc.filename or 'project storage')
+        return dict(code='project_permission_error', error=
+            'Permission denied for local project storage: ' + path +
+            '. The backend must have write access to both its project registry and the selected folder. '
+            '/ 本机后端没有写入权限：' + path +
+            '。项目位置登记目录与所选文件夹都需要写入权限；请从终端或启动文件运行后端，或配置 DETWEAVE_PROJECTS_DIR。')
+    return STORAGE_ERROR
+
 CAPACITY_ERROR = dict(error="Three requests are already active. Wait for one to finish.", code="local_busy")
 STATIC = {
     "index.html": "text/html; charset=utf-8",
@@ -100,7 +112,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.get_project(path)
             except ProjectNotFound as exc:self.send(404,{"error":str(exc)})
             except ValueError as exc:self.send(400,{"error":str(exc)})
-            except (OSError, KeyError, TypeError):self.send(507,STORAGE_ERROR)
+            except (OSError, KeyError, TypeError) as exc:self.send(507,storage_error(exc))
         elif path == "/" and getattr(self.server, "dev_ui", False):
             from .dev_ui import bundle_document
             data, policy = bundle_document()
@@ -440,7 +452,7 @@ class Handler(BaseHTTPRequestHandler):
             else:self.send(404,{"error":"Not found."})
         except ConversationConflict as exc:self.send(409,{"error":str(exc),"code":"conversation_conflict"})
         except ProjectNotFound as exc:self.send(404,{"error":str(exc)})
-        except OSError:self.send(507,STORAGE_ERROR)
+        except OSError as exc:self.send(507,storage_error(exc))
         except ProviderError as exc:self.send(502,{"error":str(exc)})
         except (ValueError,TypeError,KeyError,RecursionError) as exc:self.send(400,{"error":str(exc)[:500]})
         except Exception:
