@@ -2,6 +2,11 @@ name: Native build candidates
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: 'Platform candidate to build'
+        type: choice
+        default: all
+        options: [all, macos, windows, linux, android, ios-simulator]
       review_approved:
         description: 'External review addressed; authorize native candidate compilation'
         type: boolean
@@ -11,8 +16,8 @@ permissions:
   contents: read
 jobs:
   macos:
-    if: ${{ inputs.review_approved }}
-    runs-on: macos-14
+    if: ${{ inputs.review_approved && (inputs.target == 'all' || inputs.target == 'macos') }}
+    runs-on: macos-26
     timeout-minutes: 30
     defaults:
       run:
@@ -36,7 +41,7 @@ jobs:
             packaging/dist/DetWeave-macOS-service-smoke.json
           if-no-files-found: error
   ios-simulator:
-    if: ${{ inputs.review_approved }}
+    if: ${{ inputs.review_approved && (inputs.target == 'all' || inputs.target == 'ios-simulator') }}
     runs-on: macos-26
     timeout-minutes: 35
     defaults:
@@ -81,7 +86,7 @@ jobs:
             packaging/dist/DetWeave-iOS-service-smoke.json
           if-no-files-found: warn
   linux:
-    if: ${{ inputs.review_approved }}
+    if: ${{ inputs.review_approved && (inputs.target == 'all' || inputs.target == 'linux') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
@@ -159,7 +164,7 @@ jobs:
           path: packaging/dist/DetWeave-Linux-service-smoke.json
           if-no-files-found: error
   windows:
-    if: ${{ inputs.review_approved }}
+    if: ${{ inputs.review_approved && (inputs.target == 'all' || inputs.target == 'windows') }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -188,7 +193,7 @@ jobs:
           path: packaging/dist/DetWeave-Windows-service-smoke.json
           if-no-files-found: error
   android:
-    if: ${{ inputs.review_approved }}
+    if: ${{ inputs.review_approved && (inputs.target == 'all' || inputs.target == 'android') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
