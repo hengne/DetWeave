@@ -1,4 +1,4 @@
-"""Boot an iPhone simulator and verify the built app's loopback API."""
+"""Boot an iPhone simulator and verify both the built app's WebView and loopback API."""
 import json
 import os
 import re
@@ -48,17 +48,24 @@ def main():
                     with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/examples', timeout=3) as response:
                         examples = json.load(response)
                     if health.get('status') == 'ok' and len(examples) >= 2:
+                        with urllib.request.urlopen(f'http://127.0.0.1:{port}/api/native-ui', timeout=3) as response:
+                            ui = json.load(response)
+                        Path('dist').mkdir(exist_ok=True)
+                        Path('dist/DetWeave-iOS-ui-smoke.json').write_text(json.dumps(ui, indent=2)+'\n')
+                        if not ui.get('ready'):
+                            raise RuntimeError(f'Native WebView has not rendered the application: {ui}')
                         result = check_service(f'http://127.0.0.1:{port}')
+                        result['native_ui'] = ui
                         Path('dist').mkdir(exist_ok=True)
                         Path('dist/DetWeave-iOS-service-smoke.json').write_text(json.dumps(result,indent=2)+'\n')
                         time.sleep(5)  # Give the WebView time to render before capture.
                         Path('dist').mkdir(exist_ok=True)
                         run('xcrun', 'simctl', 'io', device, 'screenshot', 'dist/DetWeave-iOS-simulator-smoke.png', timeout=30)
-                        print('PASS: simulator launched, health OK, examples:', len(examples), flush=True)
+                        print('PASS: simulator rendered chat and project controls, health OK, examples:', len(examples), flush=True)
                         return
             except Exception as exc:
                 last_error = exc
-        raise RuntimeError(f'App did not expose a working loopback service within 90 seconds: {last_error}')
+        raise RuntimeError(f'App did not expose a working service AND rendered native UI within 90 seconds: {last_error}')
     finally:
         try:
             Path('dist').mkdir(exist_ok=True)
