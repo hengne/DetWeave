@@ -27,7 +27,10 @@ UI_PROBE = """JSON.stringify((() => {
    const r = e.getBoundingClientRect(), s = getComputedStyle(e);
    return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
  return {ready: document.readyState === 'complete' && visible('chat-input') &&
-   visible('project-menu') && window.detweaveProviderSettingsReady === true,
+   visible('project-menu') && window.detweaveProviderSettingsReady === true &&
+   typeof window.DetWeaveNativeSave === 'function',
+   nativeSaveReady: typeof window.DetWeaveNativeSave === 'function',
+   folderPickerReady: typeof window.DetWeaveSelectProjectFolder === 'function',
    documentReady: document.readyState, chatVisible: visible('chat-input'),
    projectVisible: visible('project-menu'), settingsReady: window.detweaveProviderSettingsReady === true,
    viewportWidth: innerWidth, viewportHeight: innerHeight};
@@ -85,6 +88,8 @@ class DetWeaveApp(toga.App):
                 self.server.ui_status = dict(status)
                 measured = json.loads(await asyncio.wait_for(widget.evaluate_javascript(UI_PROBE), timeout=5))
                 status.update(measured)
+                if getattr(self.server, "folder_picker", None):
+                    status["ready"] = status["ready"] and status.get("folderPickerReady", False)
                 if sys.platform == "ios":
                     status["ready"] = status["ready"] and status["nativeWidth"] > 100 and status["nativeHeight"] > 100
                 self.server.ui_status = status

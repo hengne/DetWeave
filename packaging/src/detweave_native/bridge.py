@@ -174,6 +174,8 @@ class NativeHandler(Handler):
             self.send(400, {"error": str(exc)[:300]})
 
 
+# Toga GTK 0.5.7 passes the Python character count as WebKit's UTF-8 byte
+# length. Keep injected scripts ASCII (Unicode escapes preserve translated text).
 SAVE_SCRIPT = r"""
 window.DetWeaveNativeSave = async (blob, filename) => {
   const data = await new Promise((resolve, reject) => {
@@ -189,7 +191,7 @@ window.DetWeaveNativeSave = async (blob, filename) => {
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Save failed');
   if (result.saved) {
-    alert(result.path ? 'Saved / 已保存:\n' + result.path : 'Saved to the selected location / 已保存到所选位置');
+    alert(result.path ? 'Saved / \u5df2\u4fdd\u5b58:\n' + result.path : 'Saved to the selected location / \u5df2\u4fdd\u5b58\u5230\u6240\u9009\u4f4d\u7f6e');
   }
   return result;
 };
