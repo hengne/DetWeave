@@ -83,7 +83,7 @@ jobs:
           name: DetWeave-iOS-simulator-validation
           path: |
             packaging/dist/DetWeave-iOS-simulator-*.png
-            packaging/dist/DetWeave-iOS-service-smoke.json
+            packaging/dist/DetWeave-iOS-*-smoke.json
           if-no-files-found: warn
   linux:
     if: ${{ inputs.review_approved && (inputs.target == 'all' || inputs.target == 'linux') }}

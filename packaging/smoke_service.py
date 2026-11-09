@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse
 import json
+import time
 from pathlib import Path
 import urllib.request
 from urllib.parse import urlsplit
@@ -27,6 +28,14 @@ def check_service(origin):
             return json.load(response)
     health = request('/api/health')
     assert health['status'] == 'ok'
+    deadline = time.monotonic() + 60
+    while True:
+        ui = request('/api/native-ui')
+        if ui.get('ready'):
+            break
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f'Native UI did not render chat/project controls: {ui}')
+        time.sleep(1)
     fixtures = request('/api/examples')
     assert len(fixtures) >= 2
     report = request('/api/validate', {'model':fixtures[0]['model']})
@@ -66,7 +75,8 @@ def check_service(origin):
         request('/api/settings/providers', {'active':settings['active'],'forget':ident})
     assert request('/api/settings/providers') == settings
     return {'version':health['version'],'status':'passed','project_id':project['id'],
-            'checks':['health','bundled examples','geometry validation','named project',
+            'native_ui':ui,
+            'checks':['health','rendered native chat and project controls','bundled examples','geometry validation','named project',
                       'conversation generation','clarification preserves revision','geometry edit',
                       'restore and persisted model','provider settings save/read/delete'],
             'model_calls':'none; deterministic fixtures only'}
