@@ -1,13 +1,38 @@
 name: Native build candidates
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
-    branches: ['codex/release-*']
+    inputs:
+      review_approved:
+        description: 'External review addressed; authorize native candidate compilation'
+        type: boolean
+        required: true
+        default: false
 permissions:
   contents: read
 jobs:
+  macos:
+    if: ${{ inputs.review_approved }}
+    runs-on: macos-14
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: packaging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install briefcase==0.4.7
+      - run: briefcase create macOS --no-input
+      - run: briefcase build macOS --no-input
+      - run: briefcase package macOS --adhoc-sign --no-input
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DetWeave-macOS-adhoc-candidate
+          path: packaging/dist/*.dmg
+          if-no-files-found: error
   ios-simulator:
+    if: ${{ inputs.review_approved }}
     runs-on: macos-26
     timeout-minutes: 35
     defaults:
@@ -50,6 +75,7 @@ jobs:
           path: packaging/dist/DetWeave-iOS-simulator-*.png
           if-no-files-found: warn
   linux:
+    if: ${{ inputs.review_approved }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
@@ -118,6 +144,7 @@ jobs:
           print("Installed native application loaded the packaged geometry core and validated its fixture.")
           PY
   windows:
+    if: ${{ inputs.review_approved }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -141,6 +168,7 @@ jobs:
         shell: pwsh
         run: ./scripts/smoke_windows.ps1
   android:
+    if: ${{ inputs.review_approved }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

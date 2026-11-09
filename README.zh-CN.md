@@ -10,9 +10,62 @@ DetWeave 是面向 Geant4 用户的本地几何建模工作台。粘贴无格式
 **单位：华南师范大学 / South China Normal University**
 **邮箱：Hengne.Li@m.scnu.edu.cn · Hengne.Li@cern.ch**
 
-## 对话式开发测试版
+## 启动网页开发环境——无需编译安装包
 
-当前源码正在实现持续对话界面与本机 Python 后端。使用 `python -m detweave serve --dev-ui --open --port 0` 启动，详见[开发测试说明](docs/CONVERSATION_DEV.md)。现有 v0.2.0 安装包及下方演示仍为此前的操作流程；新版先完成开发测试，再重新打包各平台。
+**研发人员和 AI 编程助手请优先使用这个入口。** 开发界面是由本机 Python 服务提供的
+单个 HTML 文档；模型调用与项目保存由本机 Python 完成。运行开发环境不需要先编译
+可执行文件或安装包，也不需要 Briefcase、Xcode、Android SDK、Node.js 或在线转发服务器。
+此前 `file://` 独立 HTML 发行版已撤下；这里的开发界面必须配合本机后端。
+
+准备 Git，以及带有 pip/venv 的 **Python 3.10 或以上版本**，在终端执行：
+
+**macOS / Linux**
+
+```sh
+git clone https://github.com/hengne/DetWeave.git
+cd DetWeave
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/python -m detweave serve --dev-ui --open --port 0
+```
+
+**Windows PowerShell**
+
+```powershell
+git clone https://github.com/hengne/DetWeave.git
+cd DetWeave
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m detweave serve --dev-ui --open --port 0
+```
+
+已有仓库时从进入仓库目录开始，不要再次嵌套克隆。终端会显示类似
+`http://127.0.0.1:54725` 的地址并自动打开浏览器。**以终端实际显示的端口为准**；
+`--port 0` 自动选择空闲端口，需要固定端口时改为 `--port 8765`。
+使用期间保留终端；**Ctrl+C 停止服务**。浏览器没有自动打开时，手动粘贴终端中的地址。
+
+打开页面后，新建项目并选择保存位置，展开“模型与示例设置”，选择服务商、模型并填写
+API Key。配置自动保存到后端用户的配置目录，与项目分开保存。离线检查操作流程时，
+选择内置示例并发送，再发送“演示修改厚度”；这是固定合成演示，不代表 AI 理解效果。
+真实自然语言修改需要配置模型 API。
+
+调试方法：
+
+- 修改 Python 后端后，停止并重新启动上述命令；当前没有自动热重载。
+- 修改 HTML/CSS/JavaScript 后刷新页面，必要时强制刷新。`--dev-ui` 每次加载页面时
+  都将当前网页源码内嵌为一个 HTML 文档，无需先打包。
+- 浏览器开发者工具的 Console/Network 可检查界面与本机 `/api/` 请求。模型服务商
+  请求由 Python 发出，应在后端调试。请求体可能包含 Key，不要公开原始网络抓包。
+- `python scripts/build_dev_ui.py` 可选生成 `dist/DetWeave-dev.html` 供检查，
+  **启动和调试不需要先执行这个步骤**；双击该文件也不会自动启动 Python。
+- 不能创建项目或保存配置时，检查所选文件夹及后端登记／配置目录的写入权限。
+  AI 工具的受限运行环境可能出现“文件夹能选、实际不能写”的情况；可从本人终端运行，
+  或将 `DETWEAVE_PROJECTS_DIR`、`DETWEAVE_SETTINGS_DIR` 指向可写目录。
+  自动测试应使用独立临时目录，不使用真实用户数据。
+
+详细存储路径见[开发环境说明](docs/CONVERSATION_DEV.md)。
+**v0.3.0 目前待审查，尚未构建或发行。** 已发布的 v0.2.0 安装包与下方视频仍为此前流程。
+审查交接与后续构建安排见 [v0.3.0 发行准备](docs/releases/v0.3.0-preparation.md)。
 
 ## 观看操作演示
 

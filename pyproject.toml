@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "detweave"
-version = "0.2.0"
+version = "0.3.0"
 description = "Conversation-driven detector geometry modelling and deterministic export"
 readme = "README.md"
 license = "LicenseRef-DetWeave-NC-Attribution-1.0"

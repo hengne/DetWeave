@@ -9,9 +9,69 @@ DetWeave is a local workbench for Geant4 users. Paste an unformatted conversatio
 **Author:** Hengne Li (李衡讷), **South China Normal University (华南师范大学)**.
 **Contact:** Hengne.Li@m.scnu.edu.cn · Hengne.Li@cern.ch
 
-## Conversation development preview
+## Run the developer web environment — no native compilation
 
-The working source now targets a continuous conversation UI with a local Python backend. Start with `python -m detweave serve --dev-ui --open --port 0`; see [development instructions](docs/CONVERSATION_DEV.md). Existing v0.2.0 installers and the demonstration below show the earlier workflow; native repackaging follows validation of this preview.
+**For developers and AI coding agents: use this path first.** The development UI is
+one HTML document served by Python on your own computer. Python connects directly
+to model providers and saves projects. No executable, installer, Briefcase, Xcode,
+Android SDK, Node.js or externally hosted relay is needed to run this environment.
+The `file://` standalone application was withdrawn; this UI requires its local backend.
+
+Prerequisites: Git and Python **3.10+** with pip/venv. From a terminal:
+
+**macOS / Linux**
+
+```sh
+git clone https://github.com/hengne/DetWeave.git
+cd DetWeave
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/python -m detweave serve --dev-ui --open --port 0
+```
+
+**Windows PowerShell**
+
+```powershell
+git clone https://github.com/hengne/DetWeave.git
+cd DetWeave
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m detweave serve --dev-ui --open --port 0
+```
+
+If the checkout already exists, start at `cd DetWeave`; do not clone inside it.
+The terminal prints a URL such as `http://127.0.0.1:54725` and opens it automatically.
+**Use the actual printed port**, not that example. `--port 0` chooses a free port;
+use `--port 8765` for a fixed port. Keep the terminal running; **Ctrl+C stops the service**.
+If the browser does not open, paste the printed URL into a browser manually.
+
+In the page, create a project and select its storage folder, expand **Model and
+example settings**, then select a provider/model and enter your API key. Settings
+auto-save to the backend user's configuration directory, separately from projects.
+For an offline workflow test, select a built-in example, send it, then send the
+explicit synthetic command `demo change thickness`. This does not test AI understanding.
+Real natural-language edits require a provider API.
+
+For debugging:
+
+- Python/backend changes: stop and restart the command. There is no automatic reload.
+- HTML/CSS/JavaScript changes: refresh the page; use a hard refresh if necessary.
+  `--dev-ui` embeds the current web source into one document on each request.
+- Browser developer tools → Console/Network inspect the UI and local `/api/` requests.
+  Provider calls happen in Python, so debug them in the backend rather than expecting
+  browser requests to the provider. Request bodies may contain API keys; do not share raw captures.
+- `python scripts/build_dev_ui.py` optionally exports `dist/DetWeave-dev.html` for inspection.
+  **It is not required to run or debug the page**; double-clicking that file does not start Python.
+- If project creation/settings saving fails, check permissions on both the selected
+  folder and the backend's configuration/registry directories. Sandboxed AI runners
+  may lack access even when the folder picker succeeds. Run from your own terminal,
+  or set `DETWEAVE_PROJECTS_DIR` and `DETWEAVE_SETTINGS_DIR` to writable directories.
+  Do not point tests at real user data.
+
+See [developer details and storage paths](docs/CONVERSATION_DEV.md).
+**v0.3.0 is under review and has not been built or released.** Existing v0.2.0
+installers and the recording below show the previous workflow. Review handoff and
+build gates: [v0.3.0 release preparation](docs/releases/v0.3.0-preparation.md).
 
 ## Watch the workflow
 

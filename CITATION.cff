@@ -2,8 +2,7 @@ cff-version: 1.2.0
 message: "Please cite DetWeave in public work that materially uses this software; retain attribution as required by LICENSE."
 type: software
 title: "DetWeave: Conversation-driven detector geometry modelling and validation"
-version: 0.2.0
-date-released: '2026-11-06'
+version: 0.3.0
 authors:
   - family-names: Li
     given-names: Hengne

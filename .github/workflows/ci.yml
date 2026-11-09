@@ -1,5 +1,14 @@
 name: tests
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      build_distribution:
+        description: 'External review addressed; authorize Python distribution build'
+        type: boolean
+        required: true
+        default: false
 permissions:
   contents: read
 jobs:
@@ -34,6 +43,7 @@ jobs:
       - run: node scripts/check_conversation.cjs
       - run: node scripts/check_provider_settings.cjs
   python-distribution:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_distribution }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
