@@ -1,0 +1,25 @@
+name: Upload verified release assets
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing draft release with BUILD-MANIFEST.json and SHA256SUMS.txt'
+        required: true
+        default: v0.3.0
+permissions:
+  contents: write
+  actions: read
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify archived build outputs and upload to the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DETWEAVE_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python scripts/upload_verified_release.py
