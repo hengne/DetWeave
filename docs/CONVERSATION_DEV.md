@@ -74,3 +74,29 @@ Windows/Linux/mobile runtime test or a Geant4/DD4hep validation.
 
 现有 v0.2.0 安装包不含这次新流程。先在这里验证对话和保存，再进入各平台重新
 打包、测试阶段。本机浏览器通过不等于其他系统或几何引擎已经验证。
+
+## Remembering provider settings / 记忆模型配置
+
+Provider/model/endpoint/key settings are saved automatically to the backend user's
+application configuration directory, separately for each provider. They survive
+browser refresh, backend restart and port changes. Use the clear-saved-configuration
+button to remove the current provider profile. Changing its endpoint clears the
+previous key; enter the key appropriate to the new endpoint.
+
+服务商、模型、接口和 API Key 会自动保存，按服务商分别记忆。刷新页面、重启后端或
+改变端口后可恢复；通过“清除已保存配置”删除当前服务商配置。更改接口地址后会清空
+原 Key，需要填入新地址对应的 Key。
+
+Storage is a local plaintext settings file, not keychain encryption. On POSIX
+systems the directory/file permissions are 0700/0600. Windows uses the user's
+application-data directory and inherited filesystem access controls. Settings
+are excluded from project journals, geometry exports and browser localStorage.
+
+这是本机明文配置文件，不是钥匙串加密。macOS/Linux 使用 0700 目录和 0600 文件
+权限；Windows 使用用户应用数据目录的文件访问控制。配置不进入项目记录、几何
+导出或浏览器 localStorage。
+
+- macOS: `~/Library/Application Support/DetWeave/settings/providers.json`
+- Windows: `%APPDATA%/DetWeave/settings/providers.json`
+- Linux: `$XDG_CONFIG_HOME/detweave/settings/providers.json` (default `~/.config`)
+- Tests/custom deployment: `DETWEAVE_SETTINGS_DIR` overrides the settings directory.

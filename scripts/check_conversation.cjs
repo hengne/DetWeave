@@ -12,7 +12,7 @@ const {chromium} = require(process.env.DETWEAVE_PLAYWRIGHT || 'playwright');
   const out = path.join(root, 'local', 'conversation-qa');
   fs.mkdirSync(out, {recursive:true});
   const server = spawn(process.env.DETWEAVE_PYTHON || 'python3', ['-m', 'detweave', 'serve', '--dev-ui', '--port', '0'], {
-    cwd:root, env:{...process.env, DETWEAVE_PROJECTS_DIR:storage}, stdio:['ignore','pipe','pipe']
+    cwd:root, env:{...process.env, DETWEAVE_PROJECTS_DIR:storage, DETWEAVE_SETTINGS_DIR:path.join(storage,"settings")}, stdio:['ignore','pipe','pipe']
   });
   let logs = '', browser;
   server.stderr.on('data', chunk => { logs += chunk.toString(); });

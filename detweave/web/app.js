@@ -25,6 +25,90 @@ const state = {
   view: "3d", selection: null, busy: false, examples: [], jsonCommitted: "",
   project: null, projects: [], projectLocations: null,
 };
+// Provider preferences live in the local backend, never in project/browser exports.
+const providerPreferences = {profiles:{}, generation:0, queue:Promise.resolve(), timer:null, active:'demo', touched:new Set()};
+function providerSaveStatus(message) {
+  const node=$("provider-save-status");
+  node.dataset.message=message;node.textContent=t(message);
+}
+async function providerSettingsRequest(body) {
+  const response=await fetch('/api/settings/providers',{method:body===undefined?'GET':'POST',cache:'no-store',
+    headers:{'Content-Type':'application/json','X-DetWeave':'1'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  if(!response.ok)throw await responseError(response);
+  return response.json();
+}
+function currentProviderProfile(id=providerPreferences.active) {
+  return {id,base_url:$("base-url").value.trim(),model:$("model-name").value.trim(),api_key:$("api-key").value,
+    thinking:$("ark-thinking").value,total_timeout_s:Number($("total-timeout").value)||600};
+}
+function queueProviderSave(body) {
+  const generation=providerPreferences.generation;
+  providerSaveStatus('正在保存模型配置…');
+  providerPreferences.queue=providerPreferences.queue.catch(()=>{}).then(()=>providerSettingsRequest(body)).then(()=>{
+    if(generation===providerPreferences.generation)providerSaveStatus('模型配置已自动保存到本机。');
+  }).catch(()=>{
+    if(generation===providerPreferences.generation)providerSaveStatus('模型配置保存失败；当前页面仍可使用，请检查本机配置目录权限。');
+  });
+}
+function flushProviderSave() {
+  clearTimeout(providerPreferences.timer);providerPreferences.timer=null;
+  const active=$("provider").value;
+  const body={active};
+  if(active!=='demo') {
+    const profile=currentProviderProfile(active);
+    if(!Number.isInteger(profile.total_timeout_s)||profile.total_timeout_s<60||profile.total_timeout_s>900){
+      providerSaveStatus('请填写 60–900 秒的整数时限后自动保存。');return;
+    }
+    providerPreferences.profiles[active]=profile;body.profile=profile;
+  }
+  queueProviderSave(body);
+}
+function scheduleProviderSave() {
+  providerPreferences.touched.add($("provider").value);
+  providerPreferences.generation++;
+  clearTimeout(providerPreferences.timer);
+  providerSaveStatus('正在保存模型配置…');
+  providerPreferences.timer=setTimeout(flushProviderSave,300);
+}
+function applyProviderProfile(id) {
+  const profile=providerPreferences.profiles[id];
+  setProvider(true);
+  $("total-timeout").value='600';
+  if(!profile)return;
+  $("base-url").value=profile.base_url||'';$("model-name").value=profile.model||'';
+  $("api-key").value=profile.api_key||'';$("ark-thinking").value=profile.thinking||'';
+  $("total-timeout").value=profile.total_timeout_s||600;
+  renderProviderModels(currentPreset(),profile.model);
+  setProvider(false);
+}
+async function restoreProviderPreferences() {
+  try {
+    const saved=await providerSettingsRequest();
+    providerPreferences.profiles={...Object.fromEntries(Object.entries(saved.profiles||{}).filter(([id])=>!providerPreferences.touched.has(id))),...providerPreferences.profiles};
+    if(providerPreferences.generation===0) {
+      const active=[...$("provider").options].some(o=>o.value===saved.active)?saved.active:'demo';
+      $("provider").value=active;providerPreferences.active=active;applyProviderProfile(active);
+      providerSaveStatus('已恢复本机保存的模型配置。');
+    }
+  } catch {providerSaveStatus('无法读取已保存的模型配置；可重新配置，保存失败时会提示。');}
+  finally {window.detweaveProviderSettingsReady=true;}
+}
+function changeProviderPreference() {
+  // Persist pending edits before setProvider clears the outgoing fields.
+  const pending=Boolean(providerPreferences.timer);
+  clearTimeout(providerPreferences.timer);providerPreferences.timer=null;
+  const previous=providerPreferences.active;
+  if(previous!=='demo' && pending) {
+    const profile=currentProviderProfile(previous);
+    providerPreferences.profiles[previous]=profile;
+    queueProviderSave({active:previous,profile});
+  }
+  providerPreferences.active=$("provider").value;
+  applyProviderProfile(providerPreferences.active);
+  providerPreferences.generation++;flushProviderSave();
+}
+
+
 const history = [];
 let activeExtraction = null;
 const streamTextLimit = 200_000;
@@ -253,7 +337,7 @@ function setProvider(reset = false) {
   model.hidden = !customModel;
   $("provider-fields").hidden = !live;
   $("ark-thinking-fields").hidden = !ark;
-  const privacy = "提取时会将讨论原文发送到所选服务。密钥只保留在当前页面内存中。";
+  const privacy = "提取时会将讨论发送到所选服务。模型配置自动保存到本机用户配置，不随项目导出。";
   $("provider-help").textContent = t(live ? privacy : "仅匹配内置合成示例，适合离线体验。");
   const help = $("ark-model-help");
   help.replaceChildren();
@@ -1610,6 +1694,7 @@ async function initialize() {
   }
   renderProviderMenu();
   setProvider(true);
+  restoreProviderPreferences();
   renderProjectMenu();
   setProjectMessage(projectStorageMessage());
   refreshProjectIndex().catch(() => setProjectMessage("未能读取本地项目列表。"));
@@ -1774,9 +1859,29 @@ $("project-runs").addEventListener("click", (event) => {
   });
 });
 
-$("provider").addEventListener("change", () => setProvider(true));
+$("provider").addEventListener("change", changeProviderPreference);
 $("ark-model-select").addEventListener("change", selectPresetModel);
 $("model-name").addEventListener("input", updateThinkingOptions);
+
+for(const id of ['api-key','model-name','ark-model-select','ark-thinking','total-timeout']) {
+  $(id).addEventListener('input',scheduleProviderSave);
+  $(id).addEventListener('change',()=>{providerPreferences.generation++;flushProviderSave();});
+}
+$("base-url").addEventListener('input',()=>{
+  if($("api-key").value){$("api-key").value='';}
+  scheduleProviderSave();
+});
+$("base-url").addEventListener('change',()=>{providerPreferences.generation++;flushProviderSave();});
+$("provider-forget").addEventListener('click',()=>{
+  clearTimeout(providerPreferences.timer);providerPreferences.timer=null;
+  const id=$("provider").value;providerPreferences.generation++;
+  providerPreferences.touched.add(id);delete providerPreferences.profiles[id];applyProviderProfile(id);
+  queueProviderSave({active:id,forget:id});
+});
+$("language").addEventListener('change',()=>{
+  const node=$("provider-save-status");if(node.dataset.message)node.textContent=t(node.dataset.message);
+});
+
 $("run-toggle").addEventListener("click", () => toggleRunMonitor($("run-monitor").hidden));
 function closeRunMonitor() {
   toggleRunMonitor(false);

@@ -120,7 +120,7 @@
               </div>
               <label id="model-name-label" for="model-name">模型 ID</label>
               <input id="model-name" type="text" autocomplete="off" placeholder="输入所用模型 ID">
-              <label for="api-key">API Key <span class="muted">仅本次会话</span></label>
+              <label for="api-key">API Key <span class="muted">本机自动保存</span></label>
               <input id="api-key" type="password" autocomplete="off" placeholder="输入该服务的 API Key">
               <label for="total-timeout">提取总时限 <span class="muted">秒</span></label>
               <input id="total-timeout" type="number" value="600" min="60" max="900" step="1" aria-describedby="timeout-help">
@@ -135,6 +135,9 @@
                 <p id="ark-thinking-help" class="fine-print">显式开关需模型支持。接口拒绝时会显示错误。</p>
               </div>
             </div>
+            <p class="fine-print">密钥保存在本机用户配置文件中，受文件权限保护，未加密；不写入项目或导出文件。修改接口地址会清空密钥，请为新地址重新填写。</p>
+            <p id="provider-save-status" class="fine-print" role="status" aria-live="polite">正在读取模型配置…</p>
+            <button id="provider-forget" type="button" class="button compact">清除此服务商配置</button>
             <p id="provider-help" class="fine-print">仅匹配内置合成示例，适合离线体验。</p>
           </div>
           </details>

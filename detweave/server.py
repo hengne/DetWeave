@@ -17,6 +17,7 @@ from .folder_picker import FolderPickerError, pick_folder, picker_backend
 from .projects import ProjectNotFound, ProjectStore, persisted_result, public_provenance
 from .streaming import RunControl, RunError, timeouts
 from .conversation import Conversations, ConversationConflict, run_turn
+from .settings import ProviderSettings, settings_error
 
 ROOT=Path(__file__).parent
 MAX_BODY=2_000_000
@@ -104,7 +105,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.allowed():return
         path=urlsplit(self.path).path
-        if path=="/api/schema":self.send(200,SCHEMA)
+        if path == "/api/settings/providers":
+            if not self.allowed(post=True):return
+            try:self.send(200,ProviderSettings().get())
+            except OSError as exc:self.send(507,settings_error(exc))
+        elif path=="/api/schema":self.send(200,SCHEMA)
         elif path=="/api/examples":self.send(200,examples())
         elif path=="/api/health":self.send(200,dict(version=__version__,status="ok",backend_execution="external-only"))
         elif path=="/api/projects" or path.startswith("/api/projects/"):
@@ -431,7 +436,10 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.settimeout(250)
             body=json.loads(self.rfile.read(size),parse_constant=lambda s: (_ for _ in ()).throw(ValueError("Non-finite JSON value.")))
             if not isinstance(body,dict):raise ValueError("Request must be an object.")
-            if extraction:
+            if path == "/api/settings/providers":
+                try:self.send(200,ProviderSettings().update(body))
+                except OSError as exc:self.send(507,settings_error(exc))
+            elif extraction:
                 self.extract_request(body, stream=path.endswith("/stream"))
             elif project_api:
                 self.post_project(path, body)

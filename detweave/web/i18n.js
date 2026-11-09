@@ -3,6 +3,17 @@
 window.DetWeaveI18n = (() => {
   const storageKey = "detweave.language";
   const english = new Map(`
+本机自动保存	Saved on this computer
+密钥保存在本机用户配置文件中，受文件权限保护，未加密；不写入项目或导出文件。修改接口地址会清空密钥，请为新地址重新填写。	Keys are saved unencrypted in the local user settings file, protected by file permissions; excluded from projects and exports. Changing the endpoint clears the key; enter a key for the new endpoint.
+正在读取模型配置…	Loading model settings…
+清除此服务商配置	Clear this provider configuration
+提取时会将讨论发送到所选服务。模型配置自动保存到本机用户配置，不随项目导出。	Extraction sends discussions to the selected service. Model settings are saved automatically in local user settings, separately from project exports.
+正在保存模型配置…	Saving model settings…
+模型配置已自动保存到本机。	Model settings saved automatically on this computer.
+模型配置保存失败；当前页面仍可使用，请检查本机配置目录权限。	Could not save model settings. This page still works; check local settings directory permissions.
+请填写 60–900 秒的整数时限后自动保存。	Enter a whole-number timeout from 60 to 900 seconds to save automatically.
+已恢复本机保存的模型配置。	Restored model settings saved on this computer.
+无法读取已保存的模型配置；可重新配置，保存失败时会提示。	Could not read saved model settings. You can configure them again; any save failure will be shown.
 DetWeave · 探测器几何工作台	DetWeave · Detector Geometry Workbench
 从设计讨论提取探测器几何，核对参数来源并导出。	Extract detector geometry from design discussions, review its evidence, and export it.
 DetWeave 首页	DetWeave home
