@@ -1,0 +1,7 @@
+{
+  "detweave/model.py": "3fc6c167e0a401ab30dd3da59e6e3842e2fd9c6bf2ff7e2b7285c939941ba665",
+  "detweave/dd4hep.py": "2419c0db19118b8feff7786728a0cdddca1e4a711264d31b9f1966394475eb72",
+  "detweave/exporters.py": "51f810032b0efbcf1be42f498b0fbd969bbfaee2307b627db3df5eb68b1b6c9f",
+  "detweave/templates/simulation.cc": "90a33fd2ccf926cbb63d90d2b53df34feecb7b7aa9353e3af15f18d9610ee232",
+  "detweave/templates/CMakeLists.txt": "ac4a5f0b40345bd01c43bf17e946b7005191a3bed5c30d37e5af82a97c12f958"
+}

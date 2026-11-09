@@ -64,7 +64,7 @@ API Key。配置自动保存到后端用户的配置目录，与项目分开保�
   自动测试应使用独立临时目录，不使用真实用户数据。
 
 详细存储路径见[开发环境说明](docs/CONVERSATION_DEV.md)。
-**v0.3.0 目前待审查，尚未构建或发行。** 已发布的 v0.2.0 安装包与下方视频仍为此前流程。
+**当前源码与下方视频展示 v0.3.0 对话式工作流程。** 已发布安装包及各平台验证状态以 [GitHub Releases](https://github.com/hengne/DetWeave/releases) 为准。
 审查交接与后续构建安排见 [v0.3.0 发行准备](docs/releases/v0.3.0-preparation.md)。
 
 ## 观看操作演示
@@ -130,9 +130,9 @@ Windows 激活命令为 `.venv\Scripts\activate`。Python 网页版打开 `http:
 
 ## 许可与引用
 
-DetWeave 0.2.0 采用[非商业署名与引用许可](LICENSE)，是**源码可见、仅允许非商业使用**的软件。商业用途须取得李衡讷的另行书面授权。分发时保留作者署名，公开分享实质使用本软件产生的成果时引用：
+DetWeave 0.3.0 采用[非商业署名与引用许可](LICENSE)，是**源码可见、仅允许非商业使用**的软件。商业用途须取得李衡讷的另行书面授权。分发时保留作者署名，公开分享实质使用本软件产生的成果时引用：
 
-> Hengne Li. *DetWeave: Conversation-driven detector geometry modelling and validation*. South China Normal University. Version 0.2.0, 2026. https://github.com/hengne/DetWeave
+> Hengne Li. *DetWeave: Conversation-driven detector geometry modelling and validation*. South China Normal University. Version 0.3.0, 2026. https://github.com/hengne/DetWeave
 
 引用应注明实际使用版本或提交号。[CITATION.cff](CITATION.cff) 提供机器可读引用信息。此前已按 MIT 发布的开发快照保留历史许可记录，见 [NOTICE](NOTICE) 和 [旧版 MIT 许可](LICENSES/MIT-legacy.txt)；第三方依赖仍适用各自许可。
 

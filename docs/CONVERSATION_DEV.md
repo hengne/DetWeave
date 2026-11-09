@@ -67,12 +67,12 @@ API Key 和模型原始思考不保存。
 
 ## Release boundary / 发行边界
 
-Existing v0.2.0 native downloads are unchanged and do not contain this new flow.
+The earlier v0.2.0 native downloads do not contain this flow. v0.3.0 release candidates use the same conversation core.
 Validate conversation behavior and persistence here first; rebuild and test each
 native platform in the next stage. A successful local browser test is not a
 Windows/Linux/mobile runtime test or a Geant4/DD4hep validation.
 
-现有 v0.2.0 安装包不含这次新流程。先在这里验证对话和保存，再进入各平台重新
+此前 v0.2.0 安装包不含这次新流程；v0.3.0 候选包已采用同一对话核心。先在这里验证对话和保存，再进入各平台重新
 打包、测试阶段。本机浏览器通过不等于其他系统或几何引擎已经验证。
 
 ## Remembering provider settings / 记忆模型配置
@@ -100,3 +100,5 @@ are excluded from project journals, geometry exports and browser localStorage.
 - Windows: `%APPDATA%/DetWeave/settings/providers.json`
 - Linux: `$XDG_CONFIG_HOME/detweave/settings/providers.json` (default `~/.config`)
 - Tests/custom deployment: `DETWEAVE_SETTINGS_DIR` overrides the settings directory.
+
+Native applications override the settings directory with their platform app-data `settings` folder, beside (not inside) `projects`. / 原生应用将配置保存在各平台应用数据目录的 `settings` 子目录，与 `projects` 并列。

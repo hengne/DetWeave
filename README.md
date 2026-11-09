@@ -69,8 +69,8 @@ For debugging:
   Do not point tests at real user data.
 
 See [developer details and storage paths](docs/CONVERSATION_DEV.md).
-**v0.3.0 is under review and has not been built or released.** Existing v0.2.0
-installers and the recording below show the previous workflow. Review handoff and
+**The source and recording below show the v0.3.0 conversation workflow.**
+Use [GitHub Releases](https://github.com/hengne/DetWeave/releases) for published installers and their platform validation status. Review handoff and
 build gates: [v0.3.0 release preparation](docs/releases/v0.3.0-preparation.md).
 
 ## Watch the workflow
@@ -136,9 +136,9 @@ The application stores explicitly created projects locally. Prompt history inclu
 
 ## License and citation
 
-DetWeave 0.2.0 is **source-available for noncommercial use**, under the [DetWeave Noncommercial Attribution and Citation License 1.0](LICENSE). Commercial use requires separate written authorization from Hengne Li. Keep the author attribution and cite DetWeave in publicly shared work to which it materially contributed.
+DetWeave 0.3.0 is **source-available for noncommercial use**, under the [DetWeave Noncommercial Attribution and Citation License 1.0](LICENSE). Commercial use requires separate written authorization from Hengne Li. Keep the author attribution and cite DetWeave in publicly shared work to which it materially contributed.
 
-> Hengne Li. *DetWeave: Conversation-driven detector geometry modelling and validation*. South China Normal University. Version 0.2.0, 2026. https://github.com/hengne/DetWeave
+> Hengne Li. *DetWeave: Conversation-driven detector geometry modelling and validation*. South China Normal University. Version 0.3.0, 2026. https://github.com/hengne/DetWeave
 
 Use the version or commit actually used; [CITATION.cff](CITATION.cff) enables GitHub's citation export. Earlier MIT-licensed development snapshots retain their historical license record in [NOTICE](NOTICE) and [LICENSES/MIT-legacy.txt](LICENSES/MIT-legacy.txt). Third-party components retain their own licenses.
 

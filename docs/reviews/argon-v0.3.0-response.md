@@ -78,3 +78,9 @@ No new Geant4/DD4hep native compilation or engine validation was performed. The
 reviewer's baseline engine check reused an existing local binary when available;
 this does not validate the newly changed C++ templates. Those changes still require
 compilation and runtime testing in the next authorized release-validation stage.
+
+## Subsequent release authorization / 后续发行授权
+
+After the source-review correction stage, the user authorized native compilation and publication. Fresh Geant4 and live Ark results are recorded under [v0.3.0 verification](../verification/v0.3.0/); platform build/runtime results are recorded in the release BUILD-MANIFEST. The earlier no-compilation statements above describe the review-only stage.
+
+源码核验后，用户已明确授权编译发行。后续验证记录与发行构建清单分别列出实测结果，不将审查阶段与发行阶段混淆。

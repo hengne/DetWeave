@@ -1,12 +1,13 @@
 # DetWeave native releases
 
-## 0.3.0 — Unreleased / 待审查、待构建
+## 0.3.0 — 2026-11-09
 
 - Continuous conversation, clarification, geometry revisions and parameter confirmation.
 - Local Python-backed single HTML developer UI; no remote relay required.
 - Persistent per-provider model/API configuration, separate from projects.
 - Actionable project-storage permission errors.
-- Native builds and platform validation deferred until external code review is addressed.
+- Independent review corrections; fresh platform candidate builds and geometry validation.
+- See release BUILD-MANIFEST for exact platform/signing/runtime boundaries.
 
 ## 0.2.0
 

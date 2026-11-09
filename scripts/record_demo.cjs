@@ -15,7 +15,7 @@ const output = path.join(root, "docs", "media");
 const checkOnly = process.argv.includes("--check-only");
 const temporary = fs.mkdtempSync(path.join(process.platform === "darwin" ? "/tmp" : os.tmpdir(), "detweave-demo-"));
 const qa = process.env.DETWEAVE_DEMO_QA_DIR;
-const fps = 6;
+const fps = 4;
 
 function listen(server) {
   return new Promise((resolve, reject) => {
@@ -39,161 +39,102 @@ function ffmpeg(args) {
 
 async function capture(browser, address, lang) {
   const english = lang === "en";
-  const page = await browser.newPage({ viewport: { width: 1160, height: 880 }, acceptDownloads: true });
-  const requests = [];
-  const errors = [];
-  page.on("request", (request) => { if (/^https?:/.test(request.url())) requests.push(request.url()); });
-  page.on("pageerror", (error) => errors.push(error.message));
+  const page = await browser.newPage({ viewport: { width: 1280, height: 960 }, acceptDownloads: true });
+  const requests = [], errors = [];
+  page.on("request", r => { if (/^https?:/.test(r.url())) requests.push(r.url()); });
+  page.on("pageerror", e => errors.push(e.message));
   await page.goto(address);
-  await page.waitForFunction(() => !document.querySelector("#export").disabled);
-  const fixtureTitle = await page.locator("#geometry-subtitle").innerText();
-  const fixtureSource = await page.inputValue("#source-text");
-  await page.selectOption("#language", lang);
-  assert.equal(await page.locator("html").getAttribute("lang"), lang);
-  assert.equal(await page.locator("#main-title").innerText(), english ? "Detector geometry workbench" : "探测器几何工作台");
-  assert.equal(await page.locator("#geometry-subtitle").innerText(), fixtureTitle);
-  assert.equal(await page.inputValue("#source-text"), fixtureSource);
-  await page.reload();
-  await page.waitForFunction(() => !document.querySelector("#export").disabled);
-  assert.equal(await page.locator("html").getAttribute("lang"), lang);
-  assert.deepEqual(await page.evaluate(() => Object.keys(localStorage)), ["detweave.language"]);
-  assert((await page.locator("#provider option").count()) >= 14);
-  await page.selectOption("#provider", "ark-coding");
-  assert.equal(await page.inputValue("#base-url"), "https://ark.cn-beijing.volces.com/api/coding/v3");
-  assert(await page.locator('#ark-model-select option[value="ark-code-latest"]').count());
-  await page.selectOption("#provider", "demo");
-
+  await page.waitForFunction(() => window.detweaveProviderSettingsReady && !document.querySelector('#project-menu').disabled);
+  await page.selectOption('#language', lang);
+  assert.equal(await page.locator('html').getAttribute('lang'),lang);
   await page.evaluate(() => {
-    const caption = document.createElement("div");
-    caption.id = "demo-caption";
-    caption.style.cssText = "position:fixed;z-index:20;bottom:10px;left:13px;max-width:52%;border:1px solid #43877e;"
-      + "padding:7px 10px;background:#0b2030;color:#c2fff2;border-radius:6px;font:600 12px/1.4 system-ui;pointer-events:none";
+    const caption=document.createElement('div');caption.id='demo-caption';
+    caption.style.cssText='position:fixed;z-index:10000;bottom:12px;left:14px;right:14px;border:1px solid #43877e;padding:10px 14px;background:#0b2030ee;color:#c2fff2;border-radius:8px;font:600 16px/1.5 system-ui;pointer-events:none';
     document.body.append(caption);
   });
-  const prefix = english ? "OFFLINE SYNTHETIC DEMO" : "离线合成示例";
-  const caption = (en, zh) => page.locator("#demo-caption").evaluate((node, text) => { node.textContent = text; },
-    prefix + "  /  " + (english ? en : zh));
-  const frames = path.join(temporary, lang);
-  fs.mkdirSync(frames);
-  let frame = 0;
-  async function shot(repeat = 1) {
-    if (checkOnly) return;
-    await page.evaluate(() => new Promise(requestAnimationFrame));
-    const image = await page.screenshot();
-    for (let i = 0; i < repeat; i++) fs.writeFileSync(path.join(frames, String(++frame).padStart(4, "0") + ".png"), image);
+  const prefix=english?'OFFLINE SYNTHETIC DEMO — NO MODEL API CALL':'离线合成演示 — 不调用模型 API';
+  const caption=async(en,zh)=>page.locator('#demo-caption').evaluate((n,t)=>n.textContent=t,prefix+'  /  '+(english?en:zh));
+  const frames=path.join(temporary,lang);fs.mkdirSync(frames);let frame=0;
+  async function shot(seconds=2) {
+    if(checkOnly)return;
+    await page.evaluate(()=>new Promise(requestAnimationFrame));
+    const image=await page.screenshot();
+    for(let i=0;i<Math.max(1,Math.round(seconds*fps));i++)fs.writeFileSync(path.join(frames,String(++frame).padStart(4,'0')+'.png'),image);
   }
-
-  const title = english ? "Synthetic sampling demo" : "合成采样演示";
-  await page.selectOption("#project-menu", "__new__");
-  await page.fill("#project-create-name", title);
-  assert(await page.isDisabled("#project-create-submit"), "Project creation must require an explicit location");
-  await page.waitForSelector('#project-create-location option[value="default"]', { state: "attached" });
-  const locations = await page.evaluate(async () => (await fetch("/api/projects/locations")).json());
-  if (locations.capabilities?.system_picker) assert(await page.isVisible("#project-location-browse"));
-  const parentFolder = path.join(temporary, lang + "-workspace");
-  fs.mkdirSync(parentFolder);
-  await page.locator("#project-location-register > summary").click();
-  await page.fill("#project-location-path-input", parentFolder);
-  await page.click("#project-location-register-button");
-  await page.waitForFunction(() => document.querySelector("#project-create-location").value
-    && !document.querySelector("#project-create-submit").disabled);
-  await caption("Choose a parent folder and create a project", "选择父目录并新建项目");
-  await shot(9);
-  await page.click("#project-create-submit");
-  await page.waitForFunction(() => !document.querySelector("#project-create-dialog").open);
-  assert.equal(await page.inputValue("#project-title-input"), title);
-  assert((await page.locator("#project-folder").innerText()).startsWith(fs.realpathSync(parentFolder) + path.sep));
-  await page.selectOption("#project-menu", "__new__");
-  assert.equal(await page.inputValue("#project-create-location"), "");
-  const locationChoices = await page.locator("#project-create-location").innerText();
-  assert(locationChoices.includes(english ? "Last used" : "上次使用"));
-  await page.click("#project-create-cancel");
-
-  await page.selectOption("#examples", "sampling");
-  await page.waitForFunction(() => !document.querySelector("#export").disabled);
-  await caption("Load a four-period tungsten / silicon fixture", "加载四周期钨／硅合成采样几何");
-  await shot(12);
-  const source = await page.inputValue("#source-text");
-  const canvas = await page.locator("#scene").boundingBox();
-  const [x, y] = [canvas.x + canvas.width / 2, canvas.y + canvas.height / 2];
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  await caption("Orbit the 3D geometry", "旋转三维几何");
-  for (let i = 1; i <= 13; i++) {
-    await page.mouse.move(x + i * 12, y - i * 4);
-    await shot();
-  }
-  await page.mouse.up();
-  await shot(4);
-
+  await caption('Create a named project and choose where to store it','新建命名项目，并选择保存位置');
+  await page.selectOption('#project-menu','__new__');
+  await page.fill('#project-create-name',english?'Conversation sampling demo':'对话式采样几何演示');
+  assert(await page.isDisabled('#project-create-submit'));
+  await page.selectOption('#project-create-location','default');
+  await shot(2.5);
+  await page.click('#project-create-submit');
+  await page.waitForFunction(()=>!document.querySelector('#project-create-dialog').open);
+  const id=await page.inputValue('#project-menu');
+  const route='/api/projects/'+id+'/conversation';
+  const snapshot=async()=>await page.evaluate(async(route)=>(await fetch(route)).json(),route);
+  const frameWorkbench=async()=>page.locator('.workbench').evaluate(n=>window.scrollTo(0,n.getBoundingClientRect().top+scrollY-20));
+  await frameWorkbench();
+  await page.locator('.chat-settings > summary').click();
+  await page.selectOption('#provider','demo');
+  await page.selectOption('#examples','sampling');
+  await caption('Load a fixed tungsten/silicon example into the conversation','将固定钨／硅示例放入对话输入框');
+  await shot(2.5);
+  await page.locator('.chat-settings > summary').click();
+  const send=async(text)=>{
+    if(text!==undefined)await page.fill('#chat-input',text);
+    await page.click('#chat-send');
+    await page.waitForFunction(()=>!chatOperation&&!state.busy&&document.querySelector('#chat-input').value==='');
+    await frameWorkbench();
+    return snapshot();
+  };
+  let doc=await send();assert.equal(doc.revisions.length,1);const first=doc.current_revision_id;
+  await caption('Version 1: conversation on the left, geometry on the right','第 1 版：左侧对话，右侧同步显示几何');
+  await shot(3);
+  const canvas=await page.locator('#scene').boundingBox();
+  const x=canvas.x+canvas.width/2,y=canvas.y+canvas.height/2;
+  await page.mouse.move(x,y);await page.mouse.down();
+  await caption('Rotate the 3D geometry to inspect the layers','旋转三维几何，观察层结构');
+  for(let i=1;i<=12;i++){await page.mouse.move(x+i*9,y-i*3);await shot(1/fps);}
+  await page.mouse.up();await shot(1);
   await page.click('[data-view="xz"]');
-  await caption("Review an orthographic projection", "查看正交投影与尺寸");
-  await shot(10);
-  await page.click("#extract");
-  await page.waitForFunction(() => document.querySelector("#run-stage").dataset.state === "done");
-  assert.equal(await page.locator("#run-reasoning").textContent(), "");
-  await caption("Run the fixed fixture locally; no model call", "固定示例提取，全程不调用模型");
-  await shot(11);
-  await page.click("#run-close");
-
-  await page.fill("#project-title-input", title + (english ? " · reviewed" : " · 已审阅"));
-  await page.fill("#source-text", source + (english
-    ? "\n\nSynthetic review note: check the layer centers in the XZ projection."
-    : "\n\n合成审阅备注：在 XZ 投影中核对各层中心。"));
-  await page.click("#project-save");
-  await page.waitForFunction(() => document.querySelector("#project-history-count").textContent.includes("2"));
-  await page.locator("#project-history > summary").click();
-  await caption("Save a second prompt version and inspect run history", "保存第二版讨论并检查提取记录");
-  await shot(13);
-  assert(await page.locator("#project-prompts [data-project-prompt]").count() === 2);
-  assert(await page.locator("#project-runs [data-project-run]").count() === 1);
-
-  await page.click("#project-runs [data-project-run]");
-  await page.waitForFunction(() => !document.querySelector("#export").disabled);
-  await page.locator("#project-history > summary").click();
-  const downloadEvent = page.waitForEvent("download");
-  await page.click("#export");
-  const archive = await downloadEvent;
-  assert.match(archive.suggestedFilename(), /\.zip$/);
-  await caption("Restore the recorded geometry and export a ZIP", "恢复记录中的几何并导出 ZIP");
-  await shot(12);
-
-  await page.click("#about-open");
-  assert.match(await page.locator("#about-dialog").innerText(), /李衡讷 \/ Hengne Li/);
-  assert.match(await page.locator("#about-dialog").innerText(), /Hengne\.Li@cern\.ch/);
-  await page.keyboard.press("Escape");
-  await page.locator("#demo-caption").evaluate((node) => node.remove());
-  await page.evaluate(() => window.scrollTo(0, 0));
-  if (qa) await page.screenshot({ path: path.join(qa, lang + "-desktop.png"), fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.evaluate(() => window.scrollTo(0, 0));
-  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "Mobile layout overflow");
-  if (qa) await page.screenshot({ path: path.join(qa, lang + "-mobile.png"), fullPage: true });
-  const projectId = await page.inputValue("#project-menu");
-  await page.fill("#source-text", source + "\n\nSynthetic input outside the fixed fixture.");
-  await page.click("#extract");
-  await page.waitForFunction(() => document.querySelector("#run-stage").dataset.state === "failed");
-  await page.click("#run-close");
-  await page.waitForFunction(() => document.querySelector("#project-history-count").textContent.includes("2 run")
-    || document.querySelector("#project-history-count").textContent.includes("2 次运行"));
-  const saved = await page.evaluate(async (id) => (await fetch("/api/projects/" + id)).json(), projectId);
-  assert.equal(saved.runs[0].status, "failed");
-  assert.equal(saved.prompts.length, 3);
-  assert(requests.every((url) => new URL(url).origin === new URL(address).origin), "Demo made an external network request");
-  assert.deepEqual(errors, []);
+  await caption('Inspect the SVG orthographic projection','检查 SVG 正交投影');await shot(2);
+  await page.fill('#chat-input',english?'Make the layers thicker; the exact value is not decided yet.':'把层加厚一点，具体数值还没确定。');
+  await caption('An unclear follow-up must not silently replace the geometry','不明确的补充要求，不应静默替换当前几何');await shot(2);
+  doc=await send();assert.equal(doc.revisions.length,1);assert.equal(doc.current_revision_id,first);
+  await caption('Demo clarification retains v1; free-text understanding needs a real model','演示澄清保留 v1；自由文本理解需要真实模型');await shot(3);
+  await page.fill('#chat-input',english?'demo change thickness':'演示修改厚度');
+  await caption('Send the explicit synthetic thickness-edit command','发送明确标记的合成厚度修改命令');await shot(2);
+  doc=await send();assert.equal(doc.revisions.length,2);assert.equal(doc.revisions[1].parent_id,first);
+  await page.locator('#revision-diff > summary').click();
+  await caption('Version 2 records the exact parameter change and its parent','第 2 版记录实际参数差异与父版本');await shot(3);
+  await page.locator('#revision-diff > summary').click();
+  await page.selectOption('#revision-select',first);
+  await caption('Select an earlier revision; history is preserved','选择早期版本，已有历史继续保留');await shot(2);
+  await page.click('#revision-restore');
+  await page.waitForFunction(id=>conversation.current_revision_id===id&&!state.busy,first);
+  assert.equal((await snapshot()).revisions.length,2);
+  await caption('Restore v1 and continue designing from it','恢复 v1，并可从它继续设计');await shot(3);
+  await page.click('[data-view="3d"]');
+  await caption('Dialogue, geometry versions and exports stay in the local project','对话、几何版本与导出均保存在本机项目中');await shot(3);
+  const saved=await snapshot();assert(saved.messages.length>=7);
+  assert(requests.every(url=>new URL(url).origin===new URL(address).origin));assert.deepEqual(errors,[]);
+  if(qa)await page.screenshot({path:path.join(qa,lang+'-desktop.png')});
+  await page.locator('#demo-caption').evaluate(n=>n.remove());
+  await page.setViewportSize({width:390,height:844});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  if(qa)await page.screenshot({path:path.join(qa,lang+'-mobile.png')});
   await page.close();
-
-  if (!checkOnly) {
-    const sourceFrames = ["-framerate", String(fps), "-i", path.join(frames, "%04d.png")];
-    const basename = path.join(output, "detweave-demo-" + (english ? "en" : "zh"));
-    ffmpeg([...sourceFrames, "-c:v", "libx264", "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart", basename + ".mp4"]);
-    ffmpeg([...sourceFrames, "-filter_complex", "[0:v]scale=980:-2,split[a][b];[a]palettegen=max_colors=112[p];[b][p]paletteuse=dither=bayer:bayer_scale=3", "-loop", "0", basename + ".gif"]);
+  if(!checkOnly){
+    const sourceFrames=['-framerate',String(fps),'-i',path.join(frames,'%04d.png')];
+    const basename=path.join(output,'detweave-demo-'+(english?'en':'zh'));
+    ffmpeg([...sourceFrames,'-c:v','libx264','-crf','25','-pix_fmt','yuv420p','-movflags','+faststart',basename+'.mp4']);
+    ffmpeg([...sourceFrames,'-filter_complex','[0:v]scale=1000:-2,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=4','-loop','0',basename+'.gif']);
   }
 }
 
 (async () => {
-  const server = spawn(process.env.DETWEAVE_PYTHON || "python3", ["-m", "detweave", "serve", "--port", "0"], {
-    cwd: root, env: { ...process.env, DETWEAVE_PROJECTS_DIR: path.join(temporary, "projects") },
+  const server = spawn(process.env.DETWEAVE_PYTHON || "python3", ["-m", "detweave", "serve", "--dev-ui", "--port", "0"], {
+    cwd: root, env: { ...process.env, DETWEAVE_PROJECTS_DIR: path.join(temporary, "projects"), DETWEAVE_SETTINGS_DIR:path.join(temporary,"settings") },
     stdio: ["ignore", "pipe", "inherit"],
   });
   let browser;
@@ -204,7 +145,7 @@ async function capture(browser, address, lang) {
     if (!checkOnly) fs.mkdirSync(output, { recursive: true });
     if (qa) fs.mkdirSync(qa, { recursive: true });
     for (const lang of ["zh-CN", "en"]) await capture(browser, address, lang);
-    console.log("Bilingual desktop/mobile, local projects, provider menus, offline extraction, and export checks passed.");
+    console.log("Bilingual conversation recording passed: named project/location, fixture, clarification, thickness revision, restore, SVG/3D, no external model calls.");
   } finally {
     if (browser) await browser.close();
     if (server.exitCode === null) {

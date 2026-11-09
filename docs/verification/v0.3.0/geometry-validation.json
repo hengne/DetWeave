@@ -1,0 +1,51 @@
+{
+  "version": "0.3.0",
+  "date": "2026-11-09",
+  "geant4_version": "11.1.3",
+  "compiler": "Apple /usr/bin/clang++",
+  "standard_models": [
+    "sampling",
+    "beamline",
+    "nested"
+  ],
+  "gdml_cpp_tables_match": true,
+  "overlap_check_samples_per_placement": 10000,
+  "negative_overlap_rejected": true,
+  "geantino_events_per_model": 10,
+  "outside_working_directory": {
+    "sampling": {
+      "detweave-check": 0,
+      "detweave-sim": 0
+    },
+    "beamline": {
+      "detweave-check": 0,
+      "detweave-sim": 0
+    },
+    "nested": {
+      "detweave-check": 0,
+      "detweave-sim": 0
+    }
+  },
+  "explicit_material_override": "passed with absolute filename containing a space",
+  "thin_world": {
+    "size_z_mm": 0.0001,
+    "sensor_thickness_mm": 1e-05,
+    "gdml_cpp_passed": true,
+    "geantino_events": 10,
+    "source_bound_runtime_assertions": 10,
+    "source_z_mm": -4e-05,
+    "instrumentation": "Only local generated simulation.cc modified to assert Geant4 Inside(gun.GetParticlePosition()) == kInside before each event; tracked template untouched."
+  },
+  "dd4hep": {
+    "version": "1.28",
+    "plugin_cpp_compile_and_link": "passed",
+    "complete_build": "blocked",
+    "runtime": "not_run",
+    "reason": "Installed DD4hep component-map helper links absent /opt/homebrew/opt/boost/lib/libboost_filesystem-mt.dylib; conda runtime path retry also failed; local ROOT/Python dependency versions differ."
+  },
+  "limits": [
+    "Geantino transportation-only smoke runs, not detector response/physics equivalence.",
+    "Three central navigation rays are not exhaustive, and fixed navigation epsilon can miss thin features.",
+    "No clean compatible DD4hep runtime validation."
+  ]
+}

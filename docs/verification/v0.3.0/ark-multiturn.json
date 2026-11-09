@@ -1,0 +1,99 @@
+{
+  "date_utc": "2026-11-09T16:24:41.947441+00:00",
+  "requested_model": "ark-code-latest",
+  "provider": "ark-coding",
+  "synthetic_only": true,
+  "turns": [
+    {
+      "number": 1,
+      "action": "revise",
+      "elapsed_s": 17.91,
+      "response_model": "auto",
+      "usage": {
+        "completion_tokens": 625,
+        "prompt_tokens": 2433,
+        "total_tokens": 3058,
+        "prompt_tokens_details": {
+          "cached_tokens": 2048
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "revision_created": true,
+      "ready": true,
+      "issue_codes": [],
+      "event_counts": {
+        "status": 3,
+        "activity": 616,
+        "usage": 2,
+        "output": 615
+      }
+    },
+    {
+      "number": 2,
+      "action": "revise",
+      "elapsed_s": 13.32,
+      "response_model": "auto",
+      "usage": {
+        "completion_tokens": 717,
+        "prompt_tokens": 4486,
+        "total_tokens": 5203,
+        "prompt_tokens_details": {
+          "cached_tokens": 2048
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "revision_created": true,
+      "ready": true,
+      "issue_codes": [],
+      "event_counts": {
+        "status": 3,
+        "activity": 708,
+        "usage": 2,
+        "output": 707
+      }
+    },
+    {
+      "number": 3,
+      "action": "answer",
+      "elapsed_s": 4.28,
+      "response_model": "auto",
+      "usage": {
+        "completion_tokens": 24,
+        "prompt_tokens": 4200,
+        "total_tokens": 4224,
+        "prompt_tokens_details": {
+          "cached_tokens": 2048
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "revision_created": false,
+      "ready": true,
+      "issue_codes": [],
+      "event_counts": {
+        "status": 3,
+        "activity": 15,
+        "usage": 2,
+        "output": 14
+      },
+      "answer": "8 mm"
+    }
+  ],
+  "checks": {
+    "initial_shape_exact": true,
+    "revised_shape_exact": true,
+    "world_preserved": true,
+    "placements_preserved": true,
+    "material_preserved": true,
+    "volume_ids_preserved": true,
+    "answer_did_not_revise": true,
+    "answer_mentions_8": true
+  },
+  "passed": true,
+  "credentials_absent_from_project": true
+}
