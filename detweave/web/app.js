@@ -67,6 +67,7 @@ function notify(message, tone = "") {
   status.className = ["status", tone].filter(Boolean).join(" ");
   status.dataset.message = message;
   status.textContent = t(message);
+  if (tone === "error" && $("chat-status")) $("chat-status").textContent = t(message);
 }
 
 async function api(path, data, binary = false) {
@@ -115,6 +116,7 @@ function updateControls() {
     $(id).disabled = state.busy;
   }
   $("project-create-submit").disabled = state.busy || !selectedProjectLocation();
+  if (typeof updateChatControls === "function") updateChatControls();
   sourceInput.readOnly = state.busy;
   jsonInput.readOnly = state.busy;
   $("dirty-label").textContent = dirty ? t("有尚未应用的原文修改") : "";
@@ -728,7 +730,7 @@ function renderIssues() {
     + (question.targets.length ? '<p class="issue-path">' + esc(question.targets.join(" · ")) + '</p>' : "")
     + '<textarea id="answer-' + index + '" maxlength="2000" aria-label="' + esc(t("答复")) + ' ' + esc(question.id)
     + '" placeholder="' + esc(t("填写设计方的答复")) + '"></textarea><div class="issue-actions">'
-    + '<button type="button" class="button compact" data-question-action="extract" data-index="' + index + '">' + esc(t("补充并提取")) + '</button>'
+    + '<button type="button" class="button compact" data-question-action="extract" data-index="' + index + '">' + esc(t(document.getElementById("chat-input") ? "在对话中答复" : "补充并提取")) + '</button>'
     + '<button type="button" class="button compact quiet" data-question-action="record" data-index="' + index
     + '" title="' + esc(t("记录答复并移出问题。仍需修改 IR 或重新提取。")) + '">' + esc(t("记录答复")) + '</button></div></article>');
   const issues = report.issues.filter((item) => item.code !== "clarification").map((item) =>
@@ -1433,6 +1435,7 @@ async function activateLocalProject(project) {
   else commit({ model: null, report: null }, false);
   projectRefreshSequence++;
   state.project = project;
+  try { if (project) localStorage.setItem("detweave.activeProject", project.id); else localStorage.removeItem("detweave.activeProject"); } catch {}
   history.length = 0;
   $("project-history").open = false;
   $("examples").value = "";
@@ -1448,6 +1451,7 @@ async function activateLocalProject(project) {
     setProjectMessage(projectStorageMessage());
   }
   render();
+  if (typeof refreshConversation === "function") await refreshConversation(true);
 }
 
 function projectAction(label, work) {
@@ -1531,6 +1535,10 @@ async function confirmEvidence(path) {
   const field = fieldsFor(state.model).get(path);
   if (!field) throw new Error("没有找到该参数。");
   const line = t("用户确认") + " [" + path + "] = " + JSON.stringify(field.value);
+  if ($("chat-input")) {
+    prepareEvidenceConfirmation(path, field.value);
+    return;
+  }
   if (!window.confirm(t("确认采用以下几何参数，并将这条确认附到原文？") + "\n\n" + line)) {
     notify("确认已取消。");
     return;
@@ -1615,10 +1623,16 @@ async function initialize() {
     state.examples = Array.isArray(data) ? data : (data.examples || []);
     const menu = $("examples");
     for (const example of state.examples) menu.add(new Option(example.title, example.id));
+    let activeProjectId;
+    try { activeProjectId = localStorage.getItem("detweave.activeProject"); } catch {}
+    if (activeProjectId && document.getElementById("chat-input")) {
+      try { await activateLocalProject(await api(projectURL(activeProjectId))); return; }
+      catch { try { localStorage.removeItem("detweave.activeProject"); } catch {} }
+    }
     if (stored) {
       await openProject(JSON.parse(stored), false);
       notify("已恢复本浏览器保存的项目。", "success");
-    } else if (state.examples[0]) {
+    } else if (!document.getElementById("chat-input") && state.examples[0]) {
       const first = state.examples[0];
       await loadExample(first, false);
       menu.value = first.id;
@@ -1784,7 +1798,11 @@ jsonInput.addEventListener("input", () => { renderSummary(); updateControls(); }
 $("extract").addEventListener("click", () => run("正在提取几何草稿…", () => extractGeometry(sourceInput.value)));
 $("examples").addEventListener("change", () => {
   const example = state.examples.find((item) => item.id === $("examples").value);
-  if (example) run("正在加载示例…", () => loadExample(example));
+  if (example && $("chat-input")) {
+    $("chat-input").value = example.text;
+    $("chat-input").focus();
+    updateChatControls();
+  } else if (example) run("正在加载示例…", () => loadExample(example));
 });
 $("tree").addEventListener("click", (event) => {
   const item = event.target.closest("[data-type]");
@@ -1799,7 +1817,13 @@ $("details").addEventListener("click", (event) => {
 });
 $("issues").addEventListener("click", (event) => {
   const button = event.target.closest("[data-question-action]");
-  if (button) run("正在处理答复…", () => answerQuestion(Number(button.dataset.index), button.dataset.questionAction));
+  if (button && $("chat-input")) {
+    const index = Number(button.dataset.index);
+    const answer = $("answer-" + index).value.trim();
+    $("chat-input").value = t("问题：") + " " + state.model.questions[index].question + "\n" + t("答复：") + " " + answer;
+    $("chat-input").focus();
+    updateChatControls();
+  } else if (button) run("正在处理答复…", () => answerQuestion(Number(button.dataset.index), button.dataset.questionAction));
 });
 $("drawing").addEventListener("click", (event) => {
   const element = event.target.closest("[data-instance]");

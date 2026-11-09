@@ -16,6 +16,7 @@ from .exporters import project_zip, svg
 from .folder_picker import FolderPickerError, pick_folder, picker_backend
 from .projects import ProjectNotFound, ProjectStore, persisted_result, public_provenance
 from .streaming import RunControl, RunError, timeouts
+from .conversation import Conversations, ConversationConflict, run_turn
 
 ROOT=Path(__file__).parent
 MAX_BODY=2_000_000
@@ -27,6 +28,8 @@ CAPACITY_ERROR = dict(error="Three requests are already active. Wait for one to 
 STATIC = {
     "index.html": "text/html; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
+    "conversation.js": "text/javascript; charset=utf-8",
+    "conversation.css": "text/css; charset=utf-8",
     "i18n.js": "text/javascript; charset=utf-8",
     "providers-catalog.js": "text/javascript; charset=utf-8",
     "style.css": "text/css; charset=utf-8",
@@ -60,7 +63,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):
         pass  # request bodies, credentials and source discussions are not logged
 
-    def send(self,status,data,kind="application/json; charset=utf-8",download=None):
+    def send(self,status,data,kind="application/json; charset=utf-8",download=None,csp=None):
         if not isinstance(data,bytes):
             data=(json.dumps(data,ensure_ascii=False,allow_nan=False) if kind.startswith("application/json") else data).encode()
         self.send_response(status)
@@ -69,7 +72,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control","no-store")
         self.send_header("X-Content-Type-Options","nosniff")
         self.send_header("Referrer-Policy","no-referrer")
-        self.send_header("Content-Security-Policy","default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy",csp or "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
         if download:self.send_header("Content-Disposition",f'attachment; filename="{download}"')
         self.end_headers()
         try:self.wfile.write(data)
@@ -98,6 +101,10 @@ class Handler(BaseHTTPRequestHandler):
             except ProjectNotFound as exc:self.send(404,{"error":str(exc)})
             except ValueError as exc:self.send(400,{"error":str(exc)})
             except (OSError, KeyError, TypeError):self.send(507,STORAGE_ERROR)
+        elif path == "/" and getattr(self.server, "dev_ui", False):
+            from .dev_ui import bundle_document
+            data, policy = bundle_document()
+            self.send(200, data, "text/html; charset=utf-8", csp=policy)
         elif path=="/" or path[1:] in STATIC:
             name="index.html" if path=="/" else path[1:]
             try:data=(ROOT/"web"/name).read_bytes()
@@ -113,8 +120,17 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/projects/locations":
             capabilities = dict(mode="desktop", system_picker=picker_backend() is not None, register_path=True)
             self.send(200, {"default_id": "default", "locations": store.locations(), "capabilities": capabilities})
+        elif len(parts) == 5 and parts[4] == "conversation":
+            self.send(200, Conversations(store).get(parts[3]))
         elif len(parts) == 4:
-            self.send(200, store.get(parts[3]))
+            project = store.get(parts[3])
+            conversations = Conversations(store)
+            if conversations._path(parts[3]).exists():
+                current = conversations.current(conversations.get(parts[3]))
+                if current:
+                    project["draft"] = {**project["draft"], "model":current["model"],
+                                        "provenance":current["provenance"], "review_pending":False}
+            self.send(200, project)
         elif len(parts) == 6 and parts[4] == "runs":
             self.send(200, store.get_run(parts[3], parts[5]))
         else:
@@ -129,6 +145,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send(201, store.register_location(body.get("path")))
         elif path == "/api/projects/locations/pick":
             self.pick_project_location(store)
+        elif len(parts) == 6 and parts[4:] == ["conversation", "stream"]:
+            self.conversation_stream(parts[3], body)
+        elif len(parts) == 6 and parts[4:] == ["conversation", "confirm"]:
+            self.send(200, Conversations(store).confirm(parts[3], body.get("revision_id"), body.get("targets")))
+        elif len(parts) == 6 and parts[4:] == ["conversation", "select"]:
+            self.send(200, Conversations(store).select(parts[3], body.get("revision_id")))
         elif len(parts) == 4:
             self.send(200, store.update(parts[3], body))
         else:
@@ -294,6 +316,92 @@ class Handler(BaseHTTPRequestHandler):
             thread.join(timeout=21)  # pending DNS/TLS connection has its own <=20 s timeout
             control.finish()
 
+    def conversation_stream(self, project_id, body):
+        journal = Conversations()
+        provider = body.get("provider", {})
+        turn_id, doc = journal.start(project_id, body.get("text"), body.get("base_revision_id"), provider)
+        if not SLOTS.acquire(blocking=False):
+            journal.fail(project_id, turn_id, "local_busy")
+            self.send(429, CAPACITY_ERROR)
+            return
+        try:
+            total, idle = timeouts(provider)
+            control = RunControl(total, idle)
+        except Exception:
+            journal.fail(project_id, turn_id, "configuration")
+            SLOTS.release()
+            raise
+        events = queue.Queue()
+        finished = threading.Event()
+        activity = {"last": None}
+        def emit(event):
+            control.check()
+            activity["last"] = time.monotonic()
+            # Reasoning and partial JSON never leave this conversation endpoint.
+            if event.get("type") == "status":
+                events.put(event)
+        def worker():
+            try:
+                proposal, provenance = run_turn(doc, provider, emit, control)
+                control.check()
+                events.put(dict(type="proposal", proposal=proposal, provenance=provenance))
+            except Exception as exc:
+                message = str(exc) if isinstance(exc, (ProviderError, ValueError)) else "Conversation failed; previous geometry preserved. / 对话失败，已保留原几何。"
+                events.put(dict(type="error",code=getattr(exc,"code","extraction_error"),message=message[:500]))
+            finally:
+                finished.set()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+        self.send_header("Cache-Control", "no-store, no-transform")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        self.connection.settimeout(5)
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+        handled = False
+        def write(event):
+            event["elapsed_s"] = round(control.elapsed, 2)
+            self.wfile.write((json.dumps(event,ensure_ascii=False,allow_nan=False)+"\n").encode())
+            self.wfile.flush()
+        try:
+            write(dict(type="status",stage="starting",message="Processing message / 正在处理消息"))
+            while True:
+                try:
+                    event = events.get(timeout=1)
+                except queue.Empty:
+                    if finished.is_set():
+                        event = dict(type="error",code="incomplete_response",message="No complete response was received.")
+                    else:
+                        event = dict(type="heartbeat",stage="working",seconds_since_provider_event=
+                                     None if activity["last"] is None else round(time.monotonic()-activity["last"],2))
+                if event["type"] == "proposal":
+                    try:
+                        control.check()
+                        result = journal.finish(project_id,turn_id,event["proposal"],event["provenance"],provider)
+                        event = dict(type="result",result=result)
+                        handled = True
+                    except Exception as exc:
+                        event = dict(type="error",code=getattr(exc,"code","project_storage_error"),
+                                     message=str(exc)[:500] if isinstance(exc,ProviderError) else STORAGE_ERROR["error"])
+                if event["type"] == "error":
+                    journal.fail(project_id,turn_id,event["code"])
+                    handled = True
+                write(event)
+                if event["type"] in ("result","error"):
+                    break
+        except (BrokenPipeError,ConnectionResetError,TimeoutError,OSError):
+            control.abort("cancelled")
+        finally:
+            if not handled:
+                control.abort("cancelled")
+                try:journal.fail(project_id,turn_id,"cancelled")
+                except OSError:pass
+            thread.join(timeout=21)
+            control.finish()
+            SLOTS.release()
+
     def do_POST(self):
         if not self.allowed(post=True):return
         path=urlsplit(self.path).path
@@ -330,6 +438,7 @@ class Handler(BaseHTTPRequestHandler):
                 if any(i["code"]=="schema" for i in report["issues"]):raise ValueError("Fix the model schema before previewing.")
                 self.send(200,svg(model,report["instances"],body.get("plane","xz")),"image/svg+xml; charset=utf-8")
             else:self.send(404,{"error":"Not found."})
+        except ConversationConflict as exc:self.send(409,{"error":str(exc),"code":"conversation_conflict"})
         except ProjectNotFound as exc:self.send(404,{"error":str(exc)})
         except OSError:self.send(507,STORAGE_ERROR)
         except ProviderError as exc:self.send(502,{"error":str(exc)})
@@ -340,9 +449,13 @@ class Handler(BaseHTTPRequestHandler):
             if needs_slot:SLOTS.release()
 
 
-def serve(port=8765):
+def serve(port=8765, dev_ui=False, open_browser=False):
     server=ThreadingHTTPServer(("127.0.0.1",port),Handler)
     server.daemon_threads=True
+    server.dev_ui=dev_ui
+    if open_browser:
+        import webbrowser
+        webbrowser.open(f"http://127.0.0.1:{server.server_port}")
     print(f"DetWeave {__version__}: http://127.0.0.1:{server.server_port} — Ctrl+C to stop",flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass

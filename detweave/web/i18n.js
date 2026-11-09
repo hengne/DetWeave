@@ -400,6 +400,31 @@ IR Schema 已下载。	IR schema downloaded.
 浏览器内嵌提取环境不可用。请重新打开单文件 DetWeave。	The embedded extraction runtime is unavailable. Reopen the standalone DetWeave HTML file.
 此单文件版本缺少提取接口。请打开新版 DetWeave HTML。	This standalone file does not contain the extraction interface. Open the current DetWeave HTML file.
 暂无事件。	No events yet.
+旧版提取记录	Legacy extraction records
+确认当前参数	Confirm current parameter
+确认并保存版本	Confirm and save revision
+确认内容已填入对话，发送后记录为新的设计要求。	Confirmation is in the composer. Send it to record the new design requirement.
+本次参数变化	Parameter changes
+在对话中答复	Reply in conversation
+设计对话	Design conversation
+继续澄清、修改与比较几何	Clarify, revise and compare geometry
+设计对话记录	Design conversation history
+继续输入设计要求	Continue the design discussion
+粘贴设计讨论，或继续描述要修改的部件、尺寸和材料…	Paste a discussion, or describe the components, dimensions and materials to change…
+停止	Stop
+发送	Send
+对话保存到所选项目。Enter 发送，Shift+Enter 换行。	Conversations are saved to the selected project. Enter sends; Shift+Enter adds a line.
+模型与示例设置	Model and example settings
+几何版本	Geometry revision
+尚无版本	No revisions yet
+恢复此版本	Restore this revision
+几何与文件	Geometry and files
+几何 IR / 导出	Geometry IR / export
+当前版本的结构化几何。使用下方导出按钮生成 GDML、Geant4 与 DD4hep 代码。	Structured geometry for the current revision. Use the export button below to generate GDML, Geant4 and DD4hep code.
+PDF 设计说明书	PDF design report
+计划在下一阶段提供。当前可查看并导出 SVG，不会显示过期的 PDF。	Planned for the next phase. SVG viewing and export are available; no outdated PDF is shown.
+正在处理设计对话…	Processing the design conversation…
+正在恢复几何版本…	Restoring geometry revision…
 `.trim().split("\n").map((line) => line.split("\t")));
   let language = "zh-CN";
   try { if (localStorage.getItem(storageKey) === "en") language = "en"; } catch { /* Browser storage is optional. */ }

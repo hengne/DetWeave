@@ -17,7 +17,7 @@ jobs:
       - run: python -m pytest -q
       - run: python -m detweave validate examples/sampling.json
       - run: python -m detweave export examples/beamline.json --output local/beamline.zip
-  standalone:
+  conversation-browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,9 +29,9 @@ jobs:
           node-version: '22'
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
-      - run: python scripts/build_standalone.py
-      - run: node scripts/check_standalone.cjs
-      - run: node scripts/check_standalone_locations.cjs
+      - run: python -m pip install -e ".[dev]"
+      - run: python scripts/build_dev_ui.py
+      - run: node scripts/check_conversation.cjs
   python-distribution:
     runs-on: ubuntu-latest
     steps:

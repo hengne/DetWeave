@@ -7,11 +7,13 @@
   <meta name="description" content="从设计讨论提取探测器几何，核对参数来源并导出。">
   <title>DetWeave · 探测器几何工作台</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/conversation.css">
   <script src="/i18n.js" defer></script>
   <script src="/providers-catalog.js" defer></script>
   <script src="/app.js" defer></script>
+  <script src="/conversation.js" defer></script>
 </head>
-<body>
+<body class="chat-workbench">
   <header class="masthead">
     <div class="shell masthead-inner">
       <a class="identity" href="/" aria-label="DetWeave 首页">
@@ -64,7 +66,7 @@
         <button type="button" class="button compact" id="project-copy-path">复制路径</button>
       </div>
       <details id="project-history" class="project-history" hidden>
-        <summary><span>提示词与运行记录</span> <span id="project-history-count" class="mono"></span></summary>
+        <summary><span>旧版提取记录</span> <span id="project-history-count" class="mono"></span></summary>
         <div class="project-history-body">
           <button type="button" class="button compact project-refresh" id="project-refresh">刷新记录</button>
           <div class="project-history-grid">
@@ -79,17 +81,27 @@
       <section class="panel source" aria-labelledby="source-title">
         <header class="panel-head">
           <div class="section-id">01</div>
-          <div><h2 id="source-title">设计讨论</h2><p>讨论原文和补充说明</p></div>
+          <div><h2 id="source-title">设计对话</h2><p>继续澄清、修改与比较几何</p></div>
         </header>
         <div class="source-body">
+          <div id="chat-messages" class="chat-messages" role="log" aria-label="设计对话记录" aria-live="polite"></div>
+          <div class="chat-composer">
+            <div id="chat-confirmation" class="chat-confirmation" hidden><strong>确认当前参数</strong><pre id="chat-confirmation-value"></pre><button type="button" id="chat-confirm-accept" class="button compact primary">确认并保存版本</button><button type="button" id="chat-confirm-dismiss" class="button compact">取消</button></div>
+            <label for="chat-input" class="sr-only">继续输入设计要求</label>
+            <textarea id="chat-input" maxlength="30000" rows="4" placeholder="粘贴设计讨论，或继续描述要修改的部件、尺寸和材料…"></textarea>
+            <div class="chat-actions"><span id="chat-status" role="status"></span><button type="button" id="chat-stop" class="button compact" hidden>停止</button><button type="button" id="chat-send" class="button primary">发送</button></div>
+            <p class="fine-print">对话保存到所选项目。Enter 发送，Shift+Enter 换行。</p>
+          </div>
+          <details class="chat-settings"><summary>模型与示例设置</summary>
           <div class="example-field">
             <label for="examples">示例</label>
             <select id="examples" aria-label="加载示例"><option value="">选择一个示例</option></select>
           </div>
-          <label for="source-text" class="sr-only">设计讨论原文</label>
+          <div class="legacy-source" hidden><label for="source-text" class="sr-only">设计讨论原文</label>
           <textarea id="source-text" maxlength="100000" spellcheck="false" placeholder="粘贴关于尺寸、材料、摆放和重复阵列的设计讨论。"></textarea>
           <div class="source-meta"><span id="dirty-label"></span><span id="text-length">0 字符</span></div>
 
+          </div>
           <div class="provider">
             <label for="provider">提取方式</label>
             <select id="provider">
@@ -125,8 +137,9 @@
             </div>
             <p id="provider-help" class="fine-print">仅匹配内置合成示例，适合离线体验。</p>
           </div>
-          <button type="button" class="button primary extract" id="extract"><span>提取几何草稿</span><span aria-hidden="true">→</span></button>
-          <div class="run-trigger-row">
+          </details>
+          <button type="button" hidden class="button primary extract" id="extract"><span>提取几何草稿</span><span aria-hidden="true">→</span></button>
+          <div class="run-trigger-row" hidden>
             <p id="status" class="status" role="status" aria-live="polite">正在加载内置示例…</p>
             <button type="button" class="button compact quiet" id="run-toggle" aria-expanded="false" aria-controls="run-monitor">运行过程 / Thinking</button>
           </div>
@@ -163,6 +176,12 @@
         </section>
       </section>
 
+      <div class="geometry-workspace">
+      <div class="revision-toolbar"><label for="revision-select">几何版本</label><select id="revision-select"><option value="">尚无版本</option></select><button type="button" id="revision-restore" class="button compact" disabled>恢复此版本</button></div>
+      <p id="revision-summary" class="fine-print"></p><details id="revision-diff"><summary>本次参数变化</summary><pre id="revision-changes" tabindex="0"></pre></details>
+      <div class="artifact-tabs" role="group" aria-label="几何与文件"><button class="button compact" data-artifact="preview" aria-pressed="true">SVG / 3D</button><button class="button compact" data-artifact="code" aria-pressed="false">几何 IR / 导出</button><button class="button compact" data-artifact="pdf" aria-pressed="false">PDF</button></div>
+      <section id="artifact-code" class="panel artifact-extra" hidden><h2>几何 IR / 导出</h2><p>当前版本的结构化几何。使用下方导出按钮生成 GDML、Geant4 与 DD4hep 代码。</p><pre id="artifact-json" tabindex="0"></pre></section>
+      <section id="artifact-pdf" class="panel artifact-extra" hidden><h2>PDF 设计说明书</h2><p>计划在下一阶段提供。当前可查看并导出 SVG，不会显示过期的 PDF。</p></section>
       <section class="panel geometry" aria-labelledby="geometry-title">
         <header class="panel-head geometry-head">
           <div class="section-id">02</div>
@@ -194,7 +213,6 @@
         </div>
         <div id="check-strip" class="check-strip" aria-label="验证状态"></div>
       </section>
-    </div>
 
     <section class="panel review" aria-labelledby="review-title">
       <header class="panel-head review-head">
@@ -249,6 +267,8 @@
       </div>
       <div id="provenance" class="provenance" hidden></div>
     </section>
+      </div>
+    </div>
   </main>
 
   <footer class="shell footer">

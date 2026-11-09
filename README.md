@@ -9,6 +9,10 @@ DetWeave is a local workbench for Geant4 users. Paste an unformatted conversatio
 **Author:** Hengne Li (李衡讷), **South China Normal University (华南师范大学)**.
 **Contact:** Hengne.Li@m.scnu.edu.cn · Hengne.Li@cern.ch
 
+## Conversation development preview
+
+The working source now targets a continuous conversation UI with a local Python backend. Start with `python -m detweave serve --dev-ui --open --port 0`; see [development instructions](docs/CONVERSATION_DEV.md). Existing v0.2.0 installers and the demonstration below show the earlier workflow; native repackaging follows validation of this preview.
+
 ## Watch the workflow
 
 ![DetWeave English workflow demonstration](docs/media/detweave-demo-en.gif)
@@ -36,8 +40,8 @@ On Windows, activate with `.venv\Scripts\activate`. Open `http://127.0.0.1:8765`
 
 1. Choose **New project** in the left dropdown, enter a title, select a storage location and create a local project. Built-in synthetic examples remain available for offline exploration.
 2. Enter the discussion or prompt. Choose a provider and model, then enter your own API key when making a live request.
-3. Run extraction. **Run progress / Thinking** shows actual provider-supplied reasoning when available, output fragments, elapsed time and connection activity. You can cancel the request.
-4. Review dimensions, materials, source quotes, conflicts and clarification questions. Add the missing information and extract again; submitted prompts and run outcomes are versioned in the project.
+3. Send a message in the left conversation panel. Concise status and elapsed time show activity; Stop cancels the request. Raw Thinking stays hidden.
+4. Reply to clarification questions or request a change. Each geometry revision records its parent and parameter differences; questions without edits retain the current model. Restore an earlier version to continue from it.
 5. Inspect the SVG projections and interactive 3D preview. Export only after blocking issues are resolved. Compile and validate generated projects in the intended Geant4/DD4hep environment.
 
 Switch between **English** and **中文** in the interface. Source discussions, model responses and user titles retain their original language.
@@ -58,7 +62,7 @@ See [the complete catalog](docs/PROVIDERS.md). Subscription products and metered
 | Evidence and clarification | Original source quotes, explicit/derived/assumed/unresolved states; unsupported or unresolved requirements block export |
 | Checks | Units, dimensions, references, cycles, expansion limits and supported analytic overlaps/containment |
 | Visualization | XY/XZ/YZ SVG, rotatable 3D, material colors, selected-component evidence and offline HTML preview |
-| Streaming | Provider-visible thinking and JSON shown separately; cancellation; configurable 60–900 s total limit, default 600 s |
+| Conversation progress | Concise status, elapsed time and cancellation; raw reasoning stays hidden; configurable 60–900 s total limit, default 600 s |
 | Exports | GDML with material definitions, Geant4 C++, DD4hep XML + C++, source evidence, hashes, SVG and validation report |
 | Native verification tools | Geant4 recursive CheckOverlaps, three-axis navigation, ten-event geantino test and geometry/IR comparisons |
 

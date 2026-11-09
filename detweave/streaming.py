@@ -308,8 +308,8 @@ def read_sse(response, assembler, control):
     return assembler.complete()
 
 
-def extract_stream(text, config, emit=None, control=None):
-    if not isinstance(text, str) or not text.strip() or len(text) > 30000:
+def extract_stream(text, config, emit=None, control=None, *, system=None, parser=None, max_input=30000):
+    if not isinstance(text, str) or not text.strip() or len(text) > max_input:
         raise RunError("Input must contain 1–30,000 characters.", "configuration")
     if not isinstance(config, dict):
         raise RunError("Provider configuration must be an object.", "configuration")
@@ -323,6 +323,13 @@ def extract_stream(text, config, emit=None, control=None):
             emit({**event, 'elapsed_s': round(control.elapsed, 2)})
     try:
         kind, url, headers, body = request_spec(config, text)
+        if system is not None:
+            if kind == 'openai':
+                body['messages'][0]['content'] = system
+            elif kind == 'anthropic':
+                body['system'] = system
+            else:
+                body['systemInstruction'] = {'parts': [{'text': system}]}
         if kind == 'gemini':
             url = url.removesuffix(':generateContent') + ':streamGenerateContent?alt=sse'
         else:
@@ -351,7 +358,7 @@ def extract_stream(text, config, emit=None, control=None):
                         send(dict(type='output', text=content))
                 control.check()
                 send(dict(type='status', stage='parsing', message='模型输出已结束，正在解析几何 JSON。'))
-                model = parse_response(content, text)
+                model = (parser or parse_response)(content, text)
                 return model, dict(provider=kind, model=config['model'], response_model=assembler.model,
                     thinking=config.get('thinking', 'provider_default'), prompt_version=PROMPT_VERSION,
                     source_sha256=hashlib.sha256(text.encode()).hexdigest(), duration_s=round(control.elapsed, 2),

@@ -9,6 +9,8 @@ def main():
     commands=parser.add_subparsers(dest="command",required=True)
     server=commands.add_parser("serve",help="Start loopback-only browser workbench")
     server.add_argument("--port",type=int,default=8765)
+    server.add_argument("--dev-ui",action="store_true",help="Serve the UI as one HTML document with a local Python backend")
+    server.add_argument("--open",dest="open_browser",action="store_true",help="Open the local workbench in your browser")
     check=commands.add_parser("validate",help="Check model schema, evidence and supported geometry")
     check.add_argument("model",type=Path)
     export=commands.add_parser("export",help="Write a reproducible project ZIP")
@@ -17,7 +19,7 @@ def main():
     args=parser.parse_args()
     if args.command=="serve":
         from .server import serve
-        serve(args.port);return
+        serve(args.port, dev_ui=args.dev_ui, open_browser=args.open_browser);return
     try:
         model=json.loads(args.model.read_text())
         result=validate(model)

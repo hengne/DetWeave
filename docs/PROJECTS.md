@@ -42,3 +42,10 @@ Python 浏览器服务也可输入已有父目录的绝对路径。标题用于�
 - 项目文件夹不保存模型 API 配置中的密钥、原始思考文本或未完成的模型输出。
 
 修改显示标题不会移动现有文件夹。复制整个项目文件夹可保留历史；几何导出 ZIP 与完整项目历史备份是不同内容。
+
+
+## Conversation development journal / 对话开发版记录
+
+The development conversation flow stores an atomic `conversation.json` beside the legacy project files. It includes user/assistant messages, failure/cancellation status, immutable geometry revisions, parent links, deterministic parameter differences and the current revision pointer. Reading an old project imports its current draft without inventing assistant messages. Legacy prompt/run records are retained separately. API keys and raw reasoning are excluded. See [the development guide](CONVERSATION_DEV.md).
+
+对话开发版在项目内新增原子保存的 `conversation.json`，记录完整消息、失败／取消状态、几何版本、父版本、参数差异和当前版本指针。旧项目迁入当前草稿，不伪造助手历史；旧提示词／运行记录单独保留。不保存 API Key 和原始思考。
