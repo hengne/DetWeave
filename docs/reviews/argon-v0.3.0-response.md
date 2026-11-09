@@ -84,3 +84,13 @@ compilation and runtime testing in the next authorized release-validation stage.
 After the source-review correction stage, the user authorized native compilation and publication. Fresh Geant4 and live Ark results are recorded under [v0.3.0 verification](../verification/v0.3.0/); platform build/runtime results are recorded in the release BUILD-MANIFEST. The earlier no-compilation statements above describe the review-only stage.
 
 源码核验后，用户已明确授权编译发行。后续验证记录与发行构建清单分别列出实测结果，不将审查阶段与发行阶段混淆。
+
+
+### 发行前追加原生验证
+
+严格界面检查发现并修复了 Linux Toga GTK 0.5.7 的脚本注入兼容问题：
+该接口以 Python 字符数指定 UTF-8 字节长度，导致含中文提示的保存脚本截断。
+现改用等价 Unicode 转义，保留中文显示；新增行为回归验证保存和目录选择回调。
+iOS 检查改为等待真实 DOM 就绪，避免固定五秒截图得到尚未加载的空白页。
+最终原生检查要求聊天、项目控件和配置初始化正常，保存桥接函数存在，
+桌面版本另要求目录选择桥接函数存在。

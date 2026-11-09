@@ -64,7 +64,7 @@ API Key。配置自动保存到后端用户的配置目录，与项目分开保�
   自动测试应使用独立临时目录，不使用真实用户数据。
 
 详细存储路径见[开发环境说明](docs/CONVERSATION_DEV.md)。
-**当前源码与下方视频展示 v0.3.0 对话式工作流程。** 已发布安装包及各平台验证状态以 [GitHub Releases](https://github.com/hengne/DetWeave/releases) 为准。
+**当前源码与下方视频展示 v0.3.0 对话式工作流程。** 已发布安装包及各平台验证状态以 [v0.3.0 GitHub Release](https://github.com/hengne/DetWeave/releases/tag/v0.3.0) 为准。
 审查交接与后续构建安排见 [v0.3.0 发行准备](docs/releases/v0.3.0-preparation.md)。
 
 ## 观看操作演示

@@ -1,0 +1,29 @@
+{
+  "version": "0.3.0",
+  "status": "passed",
+  "project_id": "9eb2d2bed3814b1db7f060635fdbed4c",
+  "native_ui": {
+    "ready": true,
+    "nativeSaveReady": true,
+    "folderPickerReady": true,
+    "documentReady": "complete",
+    "chatVisible": true,
+    "projectVisible": true,
+    "settingsReady": true,
+    "viewportWidth": 1028,
+    "viewportHeight": 725
+  },
+  "checks": [
+    "health",
+    "rendered native chat and project controls",
+    "bundled examples",
+    "geometry validation",
+    "named project",
+    "conversation generation",
+    "clarification preserves revision",
+    "geometry edit",
+    "restore and persisted model",
+    "provider settings save/read/delete"
+  ],
+  "model_calls": "none; deterministic fixtures only"
+}

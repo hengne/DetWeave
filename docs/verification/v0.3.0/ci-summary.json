@@ -1,0 +1,44 @@
+{
+  "version": "0.3.0",
+  "native_build_commit": "983f5703766caaa676b665360dcdd5ccf48500e5",
+  "native_build_run": "https://github.com/hengne/DetWeave/actions/runs/42659552969",
+  "native_jobs": {
+    "macos": "passed",
+    "windows": "passed",
+    "linux": "passed",
+    "android": "build passed; runtime unverified",
+    "ios-simulator": "passed"
+  },
+  "tests_run": "https://github.com/hengne/DetWeave/actions/runs/42659563874",
+  "python_tests": {
+    "3.10": "129 passed",
+    "3.12": "129 passed"
+  },
+  "browser": [
+    "conversation regression passed",
+    "provider settings regression passed"
+  ],
+  "macos_artifact_checks": [
+    "DMG CRC verified",
+    "codesign deep strict verified",
+    "version 0.3.0",
+    "x86_64 and arm64 executable",
+    "embedded app.py bridge.py conversation.py app.js match checkout"
+  ],
+  "ios_artifact_checks": [
+    "ZIP integrity verified",
+    "version 0.3.0",
+    "arm64 executable",
+    "embedded app.py and bridge.py match checkout",
+    "simulator screenshot visually reviewed"
+  ],
+  "android_artifact_checks": [
+    "APK ZIP integrity verified"
+  ],
+  "limitations": [
+    "Android emulator and physical-device runtime not tested",
+    "iOS physical-device signing and execution not tested",
+    "macOS Developer ID notarization and Windows publisher signing not configured",
+    "Native bridge functions loaded; OS picker interactions not exhaustively automated"
+  ]
+}

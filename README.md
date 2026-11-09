@@ -70,7 +70,7 @@ For debugging:
 
 See [developer details and storage paths](docs/CONVERSATION_DEV.md).
 **The source and recording below show the v0.3.0 conversation workflow.**
-Use [GitHub Releases](https://github.com/hengne/DetWeave/releases) for published installers and their platform validation status. Review handoff and
+Use [the v0.3.0 GitHub Release](https://github.com/hengne/DetWeave/releases/tag/v0.3.0) for published installers and their platform validation status. Review handoff and
 build gates: [v0.3.0 release preparation](docs/releases/v0.3.0-preparation.md).
 
 ## Watch the workflow

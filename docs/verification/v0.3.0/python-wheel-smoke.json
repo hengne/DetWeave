@@ -1,0 +1,14 @@
+{
+  "version": "0.3.0",
+  "status": "passed",
+  "checks": [
+    "clean venv wheel installation",
+    "isolated cwd",
+    "bundled examples/schema/materials/templates",
+    "geometry validate/export",
+    "single-document developer UI HTTP serving",
+    "CSP script hashes",
+    "health version"
+  ],
+  "private_data": "temporary directories only"
+}
