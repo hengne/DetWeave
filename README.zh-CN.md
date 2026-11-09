@@ -69,7 +69,7 @@ Windows 激活命令为 `.venv\Scripts\activate`。Python 网页版打开 `http:
 
 明确创建的项目保存到本地目录。提示词历史包括用户讨论和抽取系统提示词，因此项目目录及导出 ZIP 可能含研究内容。API Key 和原始 thinking 不写入项目记录。选择远程模型会把讨论发送给该服务商；离线演示与本地几何检查不发送外部请求。
 
-完整单文件 HTML 内含 Python 运行环境，可离线建模，项目保存到浏览器授权文件夹或浏览器项目库。远程模型需要联网及服务商跨域许可。另外可从当前几何导出更小的独立 HTML 查看器。不同交付方式见[发行形态说明](docs/DISTRIBUTION.md)。
+**2026-11-09：单文件 HTML 应用已撤下，不再作为正式下载方式。** 火山 Coding Plan 的跨域配置阻止浏览器直接调用，无法满足下载即用的核心流程。请使用[发行页](https://github.com/hengne/DetWeave/releases/tag/v0.2.0)中的原生应用。实验源码保留，几何模型导出的 HTML 查看器仍可使用。
 
 ## 许可与引用
 
@@ -101,6 +101,6 @@ python -m detweave export examples/sampling.json --output local/sampling.zip
 
 DetWeave 是独立软件，不是 CERN、Geant4、DD4hep 或模型服务商的官方产品。
 
-### 单文件 HTML 与项目保存位置
+### 应用版本与项目保存位置
 
-发行版包含 `DetWeave-0.2.0.html`：双击运行，内嵌 Python/WASM、几何校验与导出，不需要安装 Python 或启动服务。新建项目必须选择保存位置；桌面版使用系统目录选择框，手机端遵循系统文档权限。HTML 版支持浏览器授权文件夹，或选择明确标注的浏览器项目库并导出完整 ZIP 备份。远程模型调用需要联网，并受服务商 CORS 限制。详见[单文件说明](standalone/README.md)和[发行形态](docs/DISTRIBUTION.md)。
+发行页提供桌面和移动端应用。新建项目必须选择保存位置；桌面版使用系统目录选择框，手机端遵循系统文档权限。详见[发行形态](docs/DISTRIBUTION.md)。

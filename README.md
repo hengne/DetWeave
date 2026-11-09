@@ -68,7 +68,7 @@ A **draft**, an **exportable model**, and a **backend-validated model** are sepa
 
 The application stores explicitly created projects locally. Prompt history includes the user's discussion and the extraction system prompt, so project folders and exported ZIPs may contain sensitive research content. API keys and raw model reasoning traces are not written to those project records. Choosing a remote provider sends the discussion to that provider; offline examples and local geometry checks do not.
 
-The single-file HTML application embeds its Python runtime and works offline for local modelling. It stores projects in browser-authorized folders or the browser project library. Remote APIs need internet and CORS permission. The separately exported geometry preview is a smaller viewer. See [delivery formats](docs/DISTRIBUTION.md).
+**2026-11-09: The standalone HTML application has been withdrawn from public distribution.** Direct browser access to Volcengine Coding Plan is blocked by the provider’s CORS configuration, so it does not meet the intended download-and-use workflow. Use a native application from [Releases](https://github.com/hengne/DetWeave/releases/tag/v0.2.0). Experimental source is retained; exported geometry HTML previews remain available.
 
 ## License and citation
 
@@ -100,6 +100,6 @@ The local workbench never executes model-generated code. Native Geant4/DD4hep ch
 
 DetWeave is independent software, not an official CERN, Geant4, DD4hep or model-provider product.
 
-### Single HTML and project locations
+### Applications and project locations
 
-Releases include `DetWeave-0.2.0.html`, with embedded Python/WASM, validation and exporters. Open it directly without installing Python or starting a server. New projects require a storage location: desktop apps use a system directory picker, while mobile apps follow platform document permissions. The HTML supports browser-authorized folders or an explicitly labelled browser project library with complete ZIP backups. Remote model calls need internet and provider CORS permission. See the [standalone guide](standalone/README.md) and [delivery formats](docs/DISTRIBUTION.md).
+Native desktop and mobile applications are available in Releases. New projects require a storage location: desktop apps use a system directory picker, while mobile apps follow platform document permissions. See [delivery formats](docs/DISTRIBUTION.md).

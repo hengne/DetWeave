@@ -1,5 +1,9 @@
 # Single-file browser application / 单文件浏览器版
 
+**2026-11-09: The standalone HTML application has been withdrawn from public distribution.** Direct browser access to Volcengine Coding Plan is blocked by the provider’s CORS configuration, so it does not meet the intended download-and-use workflow. Use a native application from [Releases](https://github.com/hengne/DetWeave/releases/tag/v0.2.0). Experimental source is retained; exported geometry HTML previews remain available.
+
+**2026-11-09：单文件 HTML 应用已撤下，不再作为正式下载方式。** 火山 Coding Plan 的跨域配置阻止浏览器直接调用，无法满足下载即用的核心流程。请使用[发行页](https://github.com/hengne/DetWeave/releases/tag/v0.2.0)中的原生应用。实验源码保留，几何模型导出的 HTML 查看器仍可使用。
+
 Build with `python scripts/build_standalone.py`. The resulting
 `dist/DetWeave-0.2.0.html` embeds the interface, provider catalogue, CPython 3.13.2
 via Pyodide 0.28.2, Python standard library, dependencies, and DetWeave's Python
